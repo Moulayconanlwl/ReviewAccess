@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BFC Access Review</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --teal: #1a8a8f; --teal-dark: #156b6f; --teal-light: #2ba7ad;
+      --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+      --bg: #f0f9fa; --border: #d1e8ea; --text: #0f172a; --muted: #64748b;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08); --shadow-lg: 0 10px 30px rgba(0,0,0,0.12);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1a8a8f, #1a237e); min-height: 100vh; }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+    /* Navbar */
+    .navbar { background: rgba(255,255,255,0.12); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.2); padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 1.5rem; border-radius: 10px; }
+    .navbar-brand { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .navbar-user { font-size: 0.88rem; display: flex; align-items: center; gap: 1rem; }
+    .btn-logout { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+    .btn-logout:hover { background: rgba(255,255,255,0.3); color: white; }
+
+    /* Header */
+    .page-header { text-align: center; color: white; margin-bottom: 1.5rem; }
+    .page-header h1 { font-size: 1.8rem; font-weight: 700; }
+    .deadline-chip { display: inline-block; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); border-radius: 20px; padding: 0.3rem 1rem; font-size: 0.83rem; margin-top: 0.5rem; color: white; }
+
+    /* Stats */
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: white; border-radius: 10px; padding: 1.1rem 1.25rem; box-shadow: var(--shadow); border-left: 4px solid var(--teal); }
+    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 0.35rem; }
+    .stat-value { font-size: 1.9rem; font-weight: 700; color: var(--teal); }
+    .stat-value.ok { color: var(--success); }
+    .stat-value.bad { color: var(--danger); }
+    .stat-value.warn { color: var(--warning); }
+
+    /* Progress */
+    .progress-wrap { background: white; border-radius: 10px; padding: 1rem 1.5rem; box-shadow: var(--shadow); margin-bottom: 1.5rem; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; color: var(--muted); margin-bottom: 0.4rem; }
+    .progress { height: 8px; background: #e5e7eb; border-radius: 4px; }
+    .progress-bar { background: var(--teal); border-radius: 4px; transition: width 0.5s ease; }
+
+    /* Card */
+    .card { background: white; border-radius: 10px; box-shadow: var(--shadow-lg); border: none; margin-bottom: 1.5rem; }
+    .card-body { padding: 1.5rem; }
+
+    /* Filters */
+    .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 1rem; }
+    .filter-label { font-size: 0.78rem; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem; display: block; }
+    .filter-select { width: 100%; padding: 0.65rem; border: 2px solid var(--border); border-radius: 7px; font-size: 0.9rem; background: white; cursor: pointer; }
+    .filter-select:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,138,143,0.1); }
+
+    /* Bulk actions */
+    .bulk-bar { background: var(--bg); padding: 0.85rem 1.25rem; border-radius: 8px; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    .bulk-label { font-weight: 600; font-size: 0.88rem; color: var(--text); }
+    .bbtn { padding: 0.45rem 1rem; border: none; border-radius: 6px; font-weight: 600; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s; }
+    .bbtn-validate { background: var(--success); color: white; }
+    .bbtn-validate:hover { background: #059669; }
+    .bbtn-deactivate { background: var(--danger); color: white; }
+    .bbtn-deactivate:hover { background: #dc2626; }
+    .bbtn-reset { background: #6b7280; color: white; }
+    .bbtn-reset:hover { background: #4b5563; }
+    .bbtn-teal { background: var(--teal); color: white; }
+    .bbtn-teal:hover { background: var(--teal-dark); }
+    .bbtn-grey { background: #9ca3af; color: white; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; overflow-y: auto; max-height: 600px; border-radius: 8px; border: 1px solid var(--border); }
+    .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.88rem; }
+    .data-table thead { position: sticky; top: 0; z-index: 10; }
+    .data-table th { background: var(--teal); color: white; padding: 0.8rem 1rem; text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    .data-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); background: white; }
+    .data-table tbody tr:hover td { background: var(--bg); }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tr.expanded-row td { background: #f8fafc; }
+
+    /* Choice select */
+    .choice-sel { padding: 0.38rem 0.65rem; border-radius: 6px; border: 2px solid var(--border); font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .choice-sel.validated { border-color: var(--success); background: #d1fae5; color: #065f46; }
+    .choice-sel.deactivated { border-color: var(--danger); background: #fee2e2; color: #991b1b; }
+
+    /* Expand detail */
+    .detail-row { display: none; }
+    .detail-row.open { display: table-row; }
+    .detail-box { background: #f8fafc; border-radius: 8px; padding: 1rem; border: 1px solid var(--border); }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 0.75rem; }
+    .detail-item label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.2rem; }
+    .detail-item span { font-size: 0.88rem; color: var(--text); font-weight: 500; }
+    .detail-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.78rem; font-weight: 600; background: #e0f2fe; color: #0369a1; margin: 0.2rem 0.2rem 0 0; }
+
+    /* Row expand btn */
+    .btn-expand { background: none; border: none; cursor: pointer; color: var(--teal); font-size: 1rem; padding: 0.2rem 0.4rem; border-radius: 4px; transition: background 0.15s; }
+    .btn-expand:hover { background: var(--bg); }
+
+    /* Action buttons */
+    .act-btn { padding: 0.6rem 1.2rem; border: none; border-radius: 7px; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s; }
+    .act-btn-teal { background: var(--teal); color: white; }
+    .act-btn-teal:hover { background: var(--teal-dark); transform: translateY(-1px); }
+    .act-btn-purple { background: #7c3aed; color: white; }
+    .act-btn-purple:hover { background: #6d28d9; }
+
+    /* Export dropdown */
+    .exp-drop { position: relative; display: inline-block; }
+    .exp-menu { display: none; position: absolute; right: 0; top: 110%; background: white; border-radius: 8px; box-shadow: var(--shadow-lg); min-width: 200px; z-index: 200; border: 1px solid var(--border); }
+    .exp-menu.show { display: block; }
+    .exp-item { padding: 0.65rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    .exp-item:last-child { border-bottom: none; }
+    .exp-item:hover { background: var(--bg); color: var(--teal); }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: white; border-radius: 12px; padding: 2rem; max-width: 560px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+    .modal-title { font-size: 1.15rem; font-weight: 700; color: var(--teal); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+    .modal-input { width: 100%; padding: 0.65rem; border: 2px solid var(--border); border-radius: 7px; font-size: 0.9rem; margin-top: 0.4rem; }
+    .modal-input:focus { outline: none; border-color: var(--teal); }
+
+    /* Misc */
+    .section-title { font-size: 0.95rem; font-weight: 700; color: var(--teal); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+    .empty-state { text-align: center; padding: 3rem; color: var(--muted); }
+    .empty-state i { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; color: var(--border); }
+    input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--teal); }
+    .cb-cell { width: 36px; text-align: center; }
+    .line-count-badge { display: inline-block; background: #e0f2fe; color: #0369a1; border-radius: 10px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700; margin-left: 0.3rem; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(26,138,143,0.2); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) { .stats-bar { grid-template-columns: 1fr 1fr; } .filters-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Navbar -->
+  <div class="navbar">
+    <div class="navbar-brand">
+      <img src="/static/getsitelogo.png" alt="SCOR" style="height:32px;" onerror="this.style.display='none'">
+      <i class="bi bi-shield-check"></i> BFC Access Review
+    </div>
+    <div class="navbar-user">
+      <span><i class="bi bi-person-circle me-1"></i>{{ user.email }}</span>
+      <a href="/logout" class="btn-logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1 id="quarter-label">BFC User Access Review</h1>
+    <p style="color:rgba(255,255,255,0.8);font-size:0.9rem;margin-top:0.25rem;">
+      As requested by external auditors — please confirm if the users below still need BFC IFRS access.
+    </p>
+    <div class="deadline-chip" id="deadline-chip" style="display:none;">
+      <i class="bi bi-calendar-event me-1"></i>Your feedback is requested before <span id="deadline-text"></span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-label">To Validate</div><div class="stat-value warn" id="s-pending">—</div></div>
+    <div class="stat-card"><div class="stat-label">Validated</div><div class="stat-value ok" id="s-validated">—</div></div>
+    <div class="stat-card"><div class="stat-label">Deactivated</div><div class="stat-value bad" id="s-deactivated">—</div></div>
+    <div class="stat-card"><div class="stat-label">% Validation</div><div class="stat-value" id="s-pct">—</div></div>
+  </div>
+
+  <!-- Progress -->
+
+  <!-- Filters -->
+  <div class="card">
+    <div class="card-body">
+      <div class="section-title"><i class="bi bi-funnel-fill"></i>Filter Users</div>
+      <div class="filters-grid">
+        <div>
+          <label class="filter-label">Functional Profile</label>
+          <select class="filter-select" id="f-profile" onchange="applyFilters()"><option value="">All Profiles</option></select>
+        </div>
+        <div>
+          <label class="filter-label">Data Entry Access</label>
+          <select class="filter-select" id="f-access" onchange="applyFilters()"><option value="">All</option></select>
+        </div>
+        <div>
+          <label class="filter-label">Location</label>
+          <select class="filter-select" id="f-location" onchange="applyFilters()"><option value="">All Locations</option></select>
+        </div>
+        <div>
+          <label class="filter-label">Choice</label>
+          <select class="filter-select" id="f-choice" onchange="applyFilters()">
+            <option value="">All</option>
+            <option value="pending">⏳ Pending</option>
+            <option value="validate">✅ Validated</option>
+            <option value="deactivate">❌ Deactivated</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
+        <button class="act-btn" style="background:#f1f5f9;color:#374151;" onclick="clearFilters()"><i class="bi bi-x-circle"></i>Clear Filters</button>
+        <button class="act-btn act-btn-purple" onclick="openSignoffModal()"><i class="bi bi-pen"></i>Sign Off</button>
+        <button class="act-btn act-btn-teal" onclick="openDelegateModal()"><i class="bi bi-person-plus"></i>Delegate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="card">
+    <div class="card-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+        <div class="section-title" style="margin-bottom:0;">
+          <i class="bi bi-table"></i>Users
+          <span style="font-size:0.82rem;font-weight:400;color:var(--muted);" id="results-count">(loading…)</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <div class="exp-drop">
+            <button class="act-btn act-btn-teal" onclick="toggleExpMenu(event)"><i class="bi bi-download"></i>Export <i class="bi bi-chevron-down"></i></button>
+            <div class="exp-menu" id="exp-menu">
+              <div class="exp-item" onclick="exportData('all')"><i class="bi bi-file-earmark-spreadsheet"></i>Export All</div>
+              <div class="exp-item" onclick="exportData('filtered')"><i class="bi bi-filter"></i>Export Filtered</div>
+              <div class="exp-item" onclick="exportData('validate')"><i class="bi bi-check-circle"></i>Validated Only</div>
+              <div class="exp-item" onclick="exportData('deactivate')"><i class="bi bi-x-circle"></i>Deactivated Only</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bulk Actions -->
+      <div class="bulk-bar" id="bulk-bar" style="display:none;">
+        <span class="bulk-label"><i class="bi bi-check-square me-1"></i><span id="sel-count">0</span> selected</span>
+        <button class="bbtn bbtn-validate" onclick="bulkUpdate('validate')"><i class="bi bi-check-circle"></i>Validate</button>
+        <button class="bbtn bbtn-deactivate" onclick="bulkUpdate('deactivate')"><i class="bi bi-x-circle"></i>Deactivate</button>
+        <button class="bbtn bbtn-reset" onclick="bulkUpdate('pending')"><i class="bi bi-arrow-counterclockwise"></i>Reset</button>
+        <button class="bbtn bbtn-teal" onclick="selectAll()"><i class="bi bi-check-all"></i>Select All</button>
+        <button class="bbtn bbtn-grey" onclick="deselectAll()"><i class="bi bi-square"></i>Deselect</button>
+      </div>
+
+      <div id="loading" style="text-align:center;padding:3rem;display:block;">
+        <div class="spinner" style="width:36px;height:36px;border-width:4px;margin:0 auto 0.75rem;"></div>
+        <p style="color:var(--muted);">Loading your users…</p>
+      </div>
+      <div class="table-wrap" id="table-wrap" style="display:none;">
+        <table class="data-table">
+          <thead id="t-head"></thead>
+          <tbody id="t-body"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="empty-state" style="display:none;">
+        <i class="bi bi-inbox"></i><h4>No results found</h4><p>Try adjusting your filters.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sign Off Modal -->
+<div class="modal-overlay" id="signoff-modal">
+  <div class="modal-box">
+    <div class="modal-title"><i class="bi bi-pen"></i>Sign Off — Summary</div>
+    <p style="font-size:0.88rem;color:var(--muted);margin-bottom:1rem;">
+      Before signing off, review the summary of your changes below.
+    </p>
+    <div id="signoff-summary"></div>
+    <div class="modal-actions">
+      <button class="act-btn" style="background:#f1f5f9;color:#374151;" onclick="closeModal('signoff-modal')">Cancel</button>
+      <button class="act-btn act-btn-purple" onclick="confirmSignoff()"><i class="bi bi-pen me-1"></i>Confirm Sign Off</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delegate Modal -->
+<div class="modal-overlay" id="delegate-modal">
+  <div class="modal-box">
+    <div class="modal-title"><i class="bi bi-person-plus"></i>Delegate Review</div>
+    <p style="font-size:0.88rem;color:var(--muted);margin-bottom:1rem;">Enter the owner_key of the person you want to delegate to.</p>
+    <label class="filter-label">Delegate Owner Key</label>
+    <input class="modal-input" type="text" id="delegate-input" placeholder="e.g. F000002 or delegate@scor.com">
+    <div class="modal-actions">
+      <button class="act-btn" style="background:#f1f5f9;color:#374151;" onclick="closeModal('delegate-modal')">Cancel</button>
+      <button class="act-btn act-btn-teal" onclick="confirmDelegate()"><i class="bi bi-check me-1"></i>Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal-box" style="max-width:700px;">
+    <div class="modal-title"><i class="bi bi-person-lines-fill"></i>User Details — <span id="detail-username"></span></div>
+    <div id="detail-content"></div>
+    <div class="modal-actions">
+      <button class="act-btn" style="background:#f1f5f9;color:#374151;" onclick="closeModal('detail-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let allUsers = [], filteredUsers = [], selectedCodes = new Set();
+  const COLS = ['code','user_name','functional_profile','data_entry_access','manager','departement','location','active_bfc'];
+
+  document.addEventListener('click', e => { if (!e.target.closest('.exp-drop')) document.getElementById('exp-menu').classList.remove('show'); });
+  function toggleExpMenu(e) { e.stopPropagation(); document.getElementById('exp-menu').classList.toggle('show'); }
+
+  async function init() {
+    const [statsRes, usersRes] = await Promise.all([fetch('/my/stats'), fetch('/my/users')]);
+    const stats = await statsRes.json();
+    const usersData = await usersRes.json();
+
+    if (stats.success) {
+      document.getElementById('s-pending').textContent    = stats.pending;
+      document.getElementById('s-validated').textContent  = stats.validated;
+      document.getElementById('s-deactivated').textContent= stats.deactivated;
+      document.getElementById('s-pct').textContent        = stats.pct + '%';
+      document.getElementById('p-bar').style.width        = stats.pct + '%';
+      document.getElementById('p-text').textContent       = stats.pct + '%';
+      if (stats.deadline) {
+        document.getElementById('deadline-text').textContent = new Date(stats.deadline).toLocaleDateString('en-GB');
+        document.getElementById('deadline-chip').style.display = 'inline-block';
+      }
+    }
+    if (usersData.success) {
+      allUsers = usersData.users;
+      filteredUsers = [...allUsers];
+      if (usersData.quarter) document.getElementById('quarter-label').textContent = usersData.quarter;
+      populateFilters();
+      renderTable();
+    }
+    document.getElementById('loading').style.display = 'none';
+  }
+
+  function populateFilters() {
+    const unique = k => [...new Set(allUsers.map(u => u[k]).filter(Boolean))].sort();
+    const fill = (id, vals) => {
+      const el = document.getElementById(id);
+      const first = el.options[0].outerHTML;
+      el.innerHTML = first + vals.map(v => `<option value="${v}">${v}</option>`).join('');
+    };
+    fill('f-profile', unique('functional_profile'));
+    fill('f-access', unique('data_entry_access'));
+    fill('f-location', unique('location'));
+  }
+
+  function applyFilters() {
+    const fp = document.getElementById('f-profile').value;
+    const fa = document.getElementById('f-access').value;
+    const fl = document.getElementById('f-location').value;
+    const fc = document.getElementById('f-choice').value;
+    filteredUsers = allUsers.filter(u =>
+      (!fp || u.functional_profile === fp) &&
+      (!fa || u.data_entry_access === fa) &&
+      (!fl || u.location === fl) &&
+      (!fc || u.choice === fc)
+    );
+    renderTable();
+  }
+
+  function clearFilters() {
+    ['f-profile','f-access','f-location','f-choice'].forEach(id => document.getElementById(id).value = '');
+    filteredUsers = [...allUsers];
+    renderTable();
+  }
+
+  function renderTable() {
+    const wrap  = document.getElementById('table-wrap');
+    const empty = document.getElementById('empty-state');
+    const bulk  = document.getElementById('bulk-bar');
+    document.getElementById('results-count').textContent = `(${filteredUsers.length} user${filteredUsers.length !== 1 ? 's' : ''})`;
+
+    if (filteredUsers.length === 0) { wrap.style.display='none'; empty.style.display='block'; bulk.style.display='none'; return; }
+    wrap.style.display='block'; empty.style.display='none'; bulk.style.display='flex';
+
+    const headers = ['','Code','User Name','Functional Profile','Data Entry Access','Manager','Dept','Location','Active BFC','Lines','Choice',''];
+    document.getElementById('t-head').innerHTML = `<tr>
+      <th class="cb-cell"><input type="checkbox" id="hdr-cb" onchange="toggleAll()"></th>
+      ${headers.slice(1,-1).map(h=>`<th>${h}</th>`).join('')}<th>Actions</th></tr>`;
+
+    document.getElementById('t-body').innerHTML = filteredUsers.map(u => {
+      const cls = u.choice === 'validate' ? 'validated' : u.choice === 'deactivate' ? 'deactivated' : '';
+      return `
+        <tr id="row-${u.code}">
+          <td class="cb-cell"><input type="checkbox" class="row-cb" data-code="${u.code}" ${selectedCodes.has(u.code)?'checked':''} onchange="toggleRow('${u.code}')"></td>
+          <td><code style="font-size:0.82rem;">${u.code||'-'}</code></td>
+          <td style="font-weight:600;">${u.user_name||'-'}</td>
+          <td>${u.functional_profile||'-'}</td>
+          <td>${u.data_entry_access||'-'}</td>
+          <td>${u.manager||'-'}</td>
+          <td>${u.departement||'-'}</td>
+          <td>${u.location||'-'}</td>
+          <td>${u.active_bfc||'-'}</td>
+          <td><span class="line-count-badge">${u.line_count}</span></td>
+          <td>
+            <select class="choice-sel ${cls}" data-code="${u.code}" onchange="updateChoice('${u.code}', this.value, this)">
+              <option value="pending" ${u.choice==='pending'?'selected':''}>⏳ Pending</option>
+              <option value="validate" ${u.choice==='validate'?'selected':''}>✅ Validate</option>
+              <option value="deactivate" ${u.choice==='deactivate'?'selected':''}>❌ Deactivate</option>
+            </select>
+          </td>
+          <td>
+            <button class="btn-expand" onclick="toggleDetail('${u.code}', this)" title="View details">
+              <i class="bi bi-chevron-down"></i>
+            </button>
+          </td>
+        </tr>
+        <tr class="detail-row" id="detail-${u.code}">
+          <td colspan="12"><div class="detail-box" id="detail-box-${u.code}"><div class="spinner" style="margin:1rem auto;width:24px;height:24px;border-width:3px;"></div></div></td>
+        </tr>`;
+    }).join('');
+    updateSelCount();
+  }
+
+  async function toggleDetail(code, btn) {
+    const row = document.getElementById(`detail-${code}`);
+    const box = document.getElementById(`detail-box-${code}`);
+    const isOpen = row.classList.contains('open');
+    row.classList.toggle('open', !isOpen);
+    btn.querySelector('i').className = isOpen ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+    if (!isOpen) {
+      const res  = await fetch(`/my/user/${encodeURIComponent(code)}/details`);
+      const data = await res.json();
+      if (data.success) {
+        box.innerHTML = `
+          <div style="font-weight:700;color:var(--teal);margin-bottom:0.75rem;font-size:0.88rem;">
+            <i class="bi bi-layers me-1"></i>${data.details.length} access line${data.details.length>1?'s':''} for ${data.user_name}
+          </div>
+          ${data.details.map((d,i) => `
+            <div style="background:white;border:1px solid var(--border);border-radius:7px;padding:0.9rem;margin-bottom:0.5rem;">
+              <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">LINE ${i+1}</div>
+              <div class="detail-grid">
+                <div class="detail-item"><label>Data Entry Access</label><span>${d.data_entry_access||'-'}</span></div>
+                <div class="detail-item"><label>Functional Profile</label><span>${d.functional_profile||'-'}</span></div>
+                <div class="detail-item"><label>Active BFC</label><span>${d.active_bfc||'-'}</span></div>
+                <div class="detail-item"><label>Active AD</label><span>${d.active_ad||'-'}</span></div>
+                <div class="detail-item"><label>Location</label><span>${d.location||'-'}</span></div>
+                ${Object.entries(d.extra||{}).slice(0,4).map(([k,v])=>`<div class="detail-item"><label>${k}</label><span>${v||'-'}</span></div>`).join('')}
+              </div>
+            </div>`).join('')}`;
+      }
+    }
+  }
+
+  async function updateChoice(code, choice, sel) {
+    sel.className = 'choice-sel ' + (choice==='validate'?'validated':choice==='deactivate'?'deactivated':'');
+    const res = await fetch('/my/update_choice', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({code, choice})
+    });
+    const u = allUsers.find(u => u.code === code);
+    if (u) u.choice = choice;
+    await refreshStats();
+  }
+
+  async function bulkUpdate(choice) {
+    if (selectedCodes.size === 0) { alert('Select at least one user'); return; }
+    for (const code of selectedCodes) {
+      await fetch('/my/update_choice', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({code, choice})
+      });
+      const u = allUsers.find(u => u.code === code);
+      if (u) u.choice = choice;
+    }
+    deselectAll();
+    applyFilters();
+    await refreshStats();
+  }
+
+  async function refreshStats() {
+    const res  = await fetch('/my/stats');
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('s-pending').textContent    = data.pending;
+      document.getElementById('s-validated').textContent  = data.validated;
+      document.getElementById('s-deactivated').textContent= data.deactivated;
+      document.getElementById('s-pct').textContent        = data.pct + '%';
+      document.getElementById('p-bar').style.width        = data.pct + '%';
+      document.getElementById('p-text').textContent       = data.pct + '%';
+    }
+  }
+
+  function toggleRow(code) {
+    selectedCodes.has(code) ? selectedCodes.delete(code) : selectedCodes.add(code);
+    updateSelCount(); updateHdrCb();
+  }
+  function toggleAll() {
+    const checked = document.getElementById('hdr-cb').checked;
+    filteredUsers.forEach(u => checked ? selectedCodes.add(u.code) : selectedCodes.delete(u.code));
+    document.querySelectorAll('.row-cb').forEach(cb => cb.checked = checked);
+    updateSelCount();
+  }
+  function selectAll() {
+    filteredUsers.forEach(u => selectedCodes.add(u.code));
+    document.querySelectorAll('.row-cb').forEach(cb => cb.checked = true);
+    if(document.getElementById('hdr-cb')) document.getElementById('hdr-cb').checked = true;
+    updateSelCount();
+  }
+  function deselectAll() {
+    selectedCodes.clear();
+    document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false);
+    if(document.getElementById('hdr-cb')) document.getElementById('hdr-cb').checked = false;
+    updateSelCount();
+  }
+  function updateSelCount() { document.getElementById('sel-count').textContent = selectedCodes.size; }
+  function updateHdrCb() {
+    const hdr = document.getElementById('hdr-cb');
+    if (hdr) hdr.checked = filteredUsers.length > 0 && filteredUsers.every(u => selectedCodes.has(u.code));
+  }
+
+  function openSignoffModal() {
+    const validated   = allUsers.filter(u => u.choice==='validate').length;
+    const deactivated = allUsers.filter(u => u.choice==='deactivate').length;
+    const pending     = allUsers.filter(u => u.choice==='pending').length;
+    document.getElementById('signoff-summary').innerHTML = `
+      <div style="background:#f8fafc;border-radius:8px;padding:1rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;text-align:center;margin-bottom:1rem;">
+        <div><div style="font-size:1.6rem;font-weight:700;color:var(--success)">${validated}</div><div style="font-size:0.75rem;color:var(--muted)">VALIDATED</div></div>
+        <div><div style="font-size:1.6rem;font-weight:700;color:var(--danger)">${deactivated}</div><div style="font-size:0.75rem;color:var(--muted)">DEACTIVATED</div></div>
+        <div><div style="font-size:1.6rem;font-weight:700;color:var(--warning)">${pending}</div><div style="font-size:0.75rem;color:var(--muted)">PENDING</div></div>
+      </div>
+      ${pending>0?`<div style="background:#fef3c7;border-radius:6px;padding:0.75rem;font-size:0.85rem;color:#92400e;"><i class="bi bi-exclamation-triangle me-1"></i><b>Warning:</b> ${pending} user(s) still pending.</div>`:''}`;
+    document.getElementById('signoff-modal').classList.add('show');
+  }
+  async function confirmSignoff() {
+    await fetch('/my/signoff', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})});
+    closeModal('signoff-modal');
+    alert('Sign off confirmed!');
+  }
+
+  function openDelegateModal() { document.getElementById('delegate-modal').classList.add('show'); }
+  async function confirmDelegate() {
+    const key = document.getElementById('delegate-input').value.trim();
+    if (!key) { alert('Please enter a delegate key'); return; }
+    await fetch('/my/delegate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({delegate_key:key})});
+    closeModal('delegate-modal');
+    alert('Delegation saved!');
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+  document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('show'); }));
+
+  function exportData(type) {
+    document.getElementById('exp-menu').classList.remove('show');
+    let codes = [];
+    if (type==='all') codes = allUsers.map(u=>u.code);
+    else if (type==='filtered') codes = filteredUsers.map(u=>u.code);
+    else if (type==='validate') codes = filteredUsers.filter(u=>u.choice==='validate').map(u=>u.code);
+    else if (type==='deactivate') codes = filteredUsers.filter(u=>u.choice==='deactivate').map(u=>u.code);
+    if (codes.length===0) { alert('No data to export'); return; }
+    window.location.href = '/my/export';
+  }
+
+  init();
+</script>
+</body>
+</html>

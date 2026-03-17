@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BFC Access Review — Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --teal:#1a8a8f; --teal-dark:#156b6f; --success:#10b981; --danger:#ef4444;
+      --warning:#f59e0b; --bg:#f0f9fa; --border:#d1e8ea; --text:#0f172a; --muted:#64748b;
+      --shadow:0 2px 8px rgba(0,0,0,0.08); --shadow-lg:0 10px 30px rgba(0,0,0,0.12);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',sans-serif; background:linear-gradient(135deg,#1a8a8f,#1a237e); min-height:100vh; }
+    .wrap { max-width:1400px; margin:0 auto; padding:1.5rem; }
+
+    .navbar { background:rgba(255,255,255,0.12); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2); padding:0.75rem 1.5rem; display:flex; justify-content:space-between; align-items:center; color:white; margin-bottom:1.5rem; border-radius:10px; }
+    .navbar-brand { font-weight:700; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; }
+    .btn-logout { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3); color:white; padding:0.4rem 0.9rem; border-radius:6px; font-size:0.82rem; font-weight:600; text-decoration:none; transition:background 0.2s; }
+    .btn-logout:hover { background:rgba(255,255,255,0.3); color:white; }
+
+    /* Tabs */
+    .tabs { display:flex; gap:0.5rem; margin-bottom:1.5rem; }
+    .tab-btn { padding:0.6rem 1.4rem; border-radius:20px; border:2px solid rgba(255,255,255,0.4); background:transparent; color:white; font-weight:600; cursor:pointer; transition:all 0.2s; font-size:0.9rem; }
+    .tab-btn.active { background:white; color:var(--teal); border-color:white; }
+    .tab-btn:hover:not(.active) { background:rgba(255,255,255,0.15); }
+
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    /* Stats */
+    .stats-bar { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .stat-card { background:white; border-radius:10px; padding:1.1rem 1.25rem; box-shadow:var(--shadow); border-left:4px solid var(--teal); }
+    .stat-label { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:0.35rem; }
+    .stat-value { font-size:1.9rem; font-weight:700; color:var(--teal); }
+    .stat-value.ok { color:var(--success); }
+    .stat-value.bad { color:var(--danger); }
+    .stat-value.warn { color:var(--warning); }
+
+    .progress-wrap { background:white; border-radius:10px; padding:1rem 1.5rem; box-shadow:var(--shadow); margin-bottom:1.5rem; }
+    .progress-label { display:flex; justify-content:space-between; font-size:0.82rem; font-weight:600; color:var(--muted); margin-bottom:0.4rem; }
+    .progress { height:8px; background:#e5e7eb; border-radius:4px; }
+    .progress-bar { background:var(--teal); border-radius:4px; transition:width 0.5s; }
+
+    .card { background:white; border-radius:10px; box-shadow:var(--shadow-lg); border:none; margin-bottom:1.5rem; }
+    .card-body { padding:1.5rem; }
+    .section-title { font-size:0.95rem; font-weight:700; color:var(--teal); display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; }
+
+    /* Upload zone */
+    .upload-zone { border:2px dashed var(--border); border-radius:10px; padding:2.5rem 2rem; text-align:center; background:var(--bg); transition:all 0.3s; cursor:pointer; }
+    .upload-zone:hover, .upload-zone.dragover { border-color:var(--teal); background:#e6f7f8; }
+    .upload-icon { font-size:3rem; color:var(--teal); margin-bottom:0.75rem; display:block; }
+    .btn-upload { background:var(--teal); color:white; border:none; padding:0.75rem 2rem; border-radius:7px; font-weight:700; cursor:pointer; margin-top:1rem; transition:background 0.2s; }
+    .btn-upload:hover { background:var(--teal-dark); }
+
+    /* Form */
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+    .form-group { display:flex; flex-direction:column; gap:0.35rem; }
+    .form-label { font-size:0.78rem; font-weight:600; color:var(--text); text-transform:uppercase; letter-spacing:0.04em; }
+    .form-input { padding:0.65rem; border:2px solid var(--border); border-radius:7px; font-size:0.9rem; }
+    .form-input:focus { outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(26,138,143,0.1); }
+
+    /* Table */
+    .table-wrap { overflow-x:auto; overflow-y:auto; max-height:600px; border-radius:8px; border:1px solid var(--border); }
+    .data-table { width:100%; border-collapse:separate; border-spacing:0; font-size:0.88rem; }
+    .data-table thead { position:sticky; top:0; z-index:10; }
+    .data-table th { background:var(--teal); color:white; padding:0.8rem 1rem; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap; }
+    .data-table td { padding:0.8rem 1rem; border-bottom:1px solid var(--border); background:white; vertical-align:middle; }
+    .data-table tbody tr:hover td { background:var(--bg); }
+    .data-table tbody tr:last-child td { border-bottom:none; }
+
+    /* Status badge */
+    .badge-status { padding:0.3rem 0.75rem; border-radius:20px; font-size:0.78rem; font-weight:600; white-space:nowrap; }
+    .badge-terminated { background:#d1fae5; color:#065f46; }
+    .badge-progress { background:#fef3c7; color:#92400e; }
+    .badge-notstarted { background:#f3f4f6; color:#6b7280; }
+
+    /* Mini progress */
+    .mini-prog { display:flex; align-items:center; gap:0.5rem; }
+    .mini-bar-wrap { flex:1; background:#e5e7eb; border-radius:4px; height:6px; }
+    .mini-bar { background:var(--teal); height:6px; border-radius:4px; }
+
+    /* Buttons */
+    .act-btn { padding:0.55rem 1.1rem; border:none; border-radius:7px; font-weight:600; font-size:0.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem; transition:all 0.2s; }
+    .act-teal { background:var(--teal); color:white; }
+    .act-teal:hover { background:var(--teal-dark); }
+    .act-danger { background:var(--danger); color:white; }
+    .act-danger:hover { background:#dc2626; }
+    .act-ghost { background:#f1f5f9; color:var(--text); }
+    .act-ghost:hover { background:#e2e8f0; }
+    .btn-reminder { padding:0.3rem 0.7rem; border-radius:5px; border:none; background:#fef3c7; color:#92400e; font-size:0.78rem; font-weight:600; cursor:pointer; }
+    .btn-reminder:hover { background:#fde68a; }
+
+    /* User management */
+    .user-row-item { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border-radius:8px; border:1px solid var(--border); margin-bottom:0.5rem; background:var(--bg); }
+    .user-email { font-weight:600; font-size:0.9rem; }
+    .user-key { font-size:0.8rem; color:var(--muted); margin-top:0.15rem; }
+    .owner-tag { display:inline-block; background:#e0f2fe; color:#0369a1; border-radius:10px; padding:0.15rem 0.6rem; font-size:0.75rem; font-weight:700; margin-left:0.4rem; }
+
+    /* Modal */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+    .modal-overlay.show { display:flex; }
+    .modal-box { background:white; border-radius:12px; padding:2rem; max-width:500px; width:90%; max-height:85vh; overflow-y:auto; box-shadow:var(--shadow-lg); }
+    .modal-title { font-size:1.1rem; font-weight:700; color:var(--teal); margin-bottom:1.25rem; display:flex; align-items:center; gap:0.5rem; }
+    .modal-actions { display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.25rem; }
+    .modal-input { width:100%; padding:0.65rem; border:2px solid var(--border); border-radius:7px; font-size:0.9rem; margin-top:0.35rem; }
+    .modal-input:focus { outline:none; border-color:var(--teal); }
+
+    .info-box { background:#eff6ff; border-left:4px solid #3b82f6; border-radius:0 7px 7px 0; padding:0.75rem 1rem; font-size:0.85rem; color:#1e40af; margin-bottom:1rem; }
+    input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:var(--teal); }
+    .spinner { display:inline-block; width:20px; height:20px; border:3px solid rgba(26,138,143,0.2); border-top-color:var(--teal); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Navbar -->
+  <div class="navbar">
+    <div class="navbar-brand">
+      <img src="/static/getsitelogo.png" alt="SCOR" style="height:32px;" onerror="this.style.display='none'">
+      <i class="bi bi-shield-fill-check"></i> BFC Access Review — Admin
+    </div>
+    <div style="display:flex;align-items:center;gap:1rem;color:white;font-size:0.88rem;">
+      <span><i class="bi bi-person-gear me-1"></i>{{ user.email }}</span>
+      <a href="/logout" class="btn-logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('upload')"><i class="bi bi-cloud-upload me-1"></i>Upload</button>
+    <button class="tab-btn" onclick="switchTab('monitoring')"><i class="bi bi-speedometer2 me-1"></i>Monitoring</button>
+    <button class="tab-btn" onclick="switchTab('users')"><i class="bi bi-people me-1"></i>Users Management</button>
+  </div>
+
+  <!-- ─── TAB: UPLOAD ─────────────────────────────────────────── -->
+  <div class="tab-panel active" id="tab-upload">
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title"><i class="bi bi-cloud-upload"></i>Upload Access Review File</div>
+        <div class="info-box">
+          <i class="bi bi-info-circle me-1"></i>
+          Upload the Excel file containing users to review. The column <strong>"Data entry filter owner"</strong>
+          must match the <strong>owner_key</strong> assigned to each filter owner account.
+        </div>
+        <form id="upload-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Quarter / Period</label>
+              <input type="text" class="form-input" id="quarter-input" placeholder="e.g. Q1 2026">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deadline Date</label>
+              <input type="date" class="form-input" id="deadline-input">
+            </div>
+          </div>
+          <div class="upload-zone" id="upload-zone">
+            <i class="bi bi-file-earmark-spreadsheet upload-icon"></i>
+            <h5>Drop your .xlsx file here or click to browse</h5>
+            <p style="color:var(--muted);font-size:0.88rem;margin-top:0.25rem;">Max 50MB — Excel (.xlsx) only</p>
+            <input type="file" id="file-input" accept=".xlsx" style="display:none;">
+            <button type="button" class="btn-upload" onclick="document.getElementById('file-input').click()">
+              <i class="bi bi-folder2-open me-2"></i>Choose File
+            </button>
+          </div>
+        </form>
+        <div id="upload-result" style="margin-top:1rem;display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── TAB: MONITORING ─────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-monitoring">
+    <div class="stats-bar">
+      <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value" id="a-total">—</div></div>
+      <div class="stat-card"><div class="stat-label">Validated</div><div class="stat-value ok" id="a-validated">—</div></div>
+      <div class="stat-card"><div class="stat-label">Deactivated</div><div class="stat-value bad" id="a-deactivated">—</div></div>
+      <div class="stat-card"><div class="stat-label">% Validation</div><div class="stat-value" id="a-pct">—</div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span id="a-quarter-label">Overall Validation Progress</span><span id="a-p-text">0%</span></div>
+      <div class="progress"><div class="progress-bar" id="a-p-bar" style="width:0%"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="section-title" style="margin-bottom:0;"><i class="bi bi-table"></i>Filter Owners Monitoring <span style="font-size:0.8rem;font-weight:400;color:var(--muted);" id="a-deadline-label"></span></div>
+          <button class="act-btn act-teal" onclick="exportAdmin()"><i class="bi bi-download"></i>Export Excel</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Code / Owner Key</th>
+                <th>Validation %</th>
+                <th>Status</th>
+                <th>Last Validation</th>
+                <th>Delegation</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-tbody"></tbody>
+          </table>
+        </div>
+        <div id="admin-empty" style="text-align:center;padding:2rem;color:var(--muted);display:none;">
+          <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+          No data — upload a file first.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── TAB: USERS ──────────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-users">
+    <div class="card">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="section-title" style="margin-bottom:0;"><i class="bi bi-people"></i>Filter Owner Accounts</div>
+          <button class="act-btn act-teal" onclick="openCreateModal()"><i class="bi bi-plus-circle"></i>Add User</button>
+        </div>
+        <div class="info-box">
+          <i class="bi bi-key me-1"></i>
+          The <strong>Owner Key</strong> must exactly match the value in the <em>"Data entry filter owner"</em>
+          column of the uploaded Excel. This links the account to the correct data rows.
+        </div>
+        <div id="users-list"><div style="text-align:center;padding:2rem;"><div class="spinner" style="margin:0 auto;width:28px;height:28px;border-width:3px;"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="create-modal">
+  <div class="modal-box">
+    <div class="modal-title"><i class="bi bi-person-plus"></i>Add Filter Owner Account</div>
+    <div class="form-group" style="margin-bottom:0.9rem;">
+      <label class="form-label">Email</label>
+      <input class="modal-input" type="email" id="new-email" placeholder="owner@scor.com">
+    </div>
+    <div class="form-group" style="margin-bottom:0.9rem;">
+      <label class="form-label">Password</label>
+      <input class="modal-input" type="text" id="new-password" placeholder="Temporary password">
+    </div>
+    <div class="form-group" style="margin-bottom:0.9rem;">
+      <label class="form-label">Owner Key <span style="color:var(--danger);">*</span></label>
+      <input class="modal-input" type="text" id="new-owner-key" placeholder="Must match 'Data entry filter owner' value">
+      <small style="color:var(--muted);font-size:0.78rem;">E.g.: F000001 or the exact string in your Excel column</small>
+    </div>
+    <div id="owners-hint" style="margin-top:0.5rem;display:none;">
+      <div style="font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:0.3rem;">OWNERS IN LAST UPLOAD:</div>
+      <div id="owners-chips"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="act-btn act-ghost" onclick="closeModal('create-modal')">Cancel</button>
+      <button class="act-btn act-teal" onclick="createUser()"><i class="bi bi-check"></i>Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <div class="modal-title"><i class="bi bi-pencil"></i>Edit User</div>
+    <input type="hidden" id="edit-id">
+    <div class="form-group" style="margin-bottom:0.9rem;">
+      <label class="form-label">Email</label>
+      <input class="modal-input" type="email" id="edit-email">
+    </div>
+    <div class="form-group" style="margin-bottom:0.9rem;">
+      <label class="form-label">Owner Key</label>
+      <input class="modal-input" type="text" id="edit-owner-key">
+    </div>
+    <div class="form-group" style="margin-bottom:0.9rem;">
+      <label class="form-label">New Password <span style="color:var(--muted);font-size:0.78rem;">(leave blank to keep current)</span></label>
+      <input class="modal-input" type="text" id="edit-password" placeholder="••••••••">
+    </div>
+    <div class="modal-actions">
+      <button class="act-btn act-ghost" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="act-btn act-teal" onclick="saveEdit()"><i class="bi bi-check"></i>Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reminder Modal -->
+<div class="modal-overlay" id="reminder-modal">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-title"><i class="bi bi-bell"></i>Send Reminder</div>
+    <p id="reminder-text" style="font-size:0.9rem;color:var(--muted);"></p>
+    <div style="background:#fef3c7;border-radius:6px;padding:0.75rem;font-size:0.82rem;color:#92400e;margin-top:0.75rem;">
+      <i class="bi bi-info-circle me-1"></i>In production, connect this to your email system (SMTP / SendGrid / MS Graph).
+    </div>
+    <div class="modal-actions">
+      <button class="act-btn act-ghost" onclick="closeModal('reminder-modal')">Cancel</button>
+      <button class="act-btn" style="background:var(--warning);color:white;" onclick="closeModal('reminder-modal');alert('Reminder sent!')">
+        <i class="bi bi-bell me-1"></i>Send
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let lastOwnersInFile = [];
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.currentTarget.classList.add('active');
+    if (name === 'monitoring') loadMonitoring();
+    if (name === 'users') loadUsers();
+  }
+
+  // ── Upload ──────────────────────────────────────────────────────
+  const zone = document.getElementById('upload-zone');
+  const fi   = document.getElementById('file-input');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); if(e.dataTransfer.files[0]) handleUpload(e.dataTransfer.files[0]); });
+  fi.addEventListener('change', e => { if(e.target.files[0]) handleUpload(e.target.files[0]); });
+
+  async function handleUpload(file) {
+    const btn = document.querySelector('.btn-upload');
+    btn.innerHTML = '<span class="spinner"></span> Uploading…';
+    btn.disabled = true;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('quarter', document.getElementById('quarter-input').value);
+    fd.append('deadline', document.getElementById('deadline-input').value);
+    try {
+      const res  = await fetch('/admin/upload', {method:'POST', body:fd});
+      const data = await res.json();
+      const box  = document.getElementById('upload-result');
+      box.style.display = 'block';
+      if (data.success) {
+        lastOwnersInFile = data.owners_in_file || [];
+        box.innerHTML = `<div style="background:#d1fae5;border-radius:8px;padding:1rem;color:#065f46;font-weight:600;">
+          <i class="bi bi-check-circle me-1"></i>Upload successful! ${data.total_rows} rows imported.
+          <div style="margin-top:0.75rem;font-weight:400;font-size:0.85rem;">
+            <b>Owners found in file:</b><br>
+            ${data.owners_in_file.map(o=>`<span style="background:#a7f3d0;border-radius:5px;padding:0.2rem 0.5rem;margin:0.15rem;display:inline-block;font-size:0.8rem;">${o}</span>`).join('')}
+          </div>
+          <div style="margin-top:0.75rem;font-size:0.85rem;">→ Go to <b>Users Management</b> tab to assign these owner keys to user accounts.</div>
+        </div>`;
+      } else {
+        box.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:1rem;color:#991b1b;">
+          <i class="bi bi-exclamation-circle me-1"></i>${data.error}</div>`;
+      }
+    } catch(e) {
+      alert('Upload error: ' + e.message);
+    } finally {
+      btn.innerHTML = '<i class="bi bi-folder2-open me-2"></i>Choose File';
+      btn.disabled = false;
+    }
+  }
+
+  // ── Monitoring ──────────────────────────────────────────────────
+  async function loadMonitoring() {
+    const res  = await fetch('/admin/stats');
+    const data = await res.json();
+    if (!data.success) { document.getElementById('admin-empty').style.display='block'; return; }
+
+    document.getElementById('a-total').textContent      = data.total;
+    document.getElementById('a-validated').textContent  = data.validated;
+    document.getElementById('a-deactivated').textContent= data.deactivated;
+    document.getElementById('a-pct').textContent        = data.pct + '%';
+    document.getElementById('a-p-bar').style.width      = data.pct + '%';
+    document.getElementById('a-p-text').textContent     = data.pct + '%';
+    if (data.quarter) document.getElementById('a-quarter-label').textContent = data.quarter + ' — Progress';
+    if (data.deadline) document.getElementById('a-deadline-label').textContent = `Deadline: ${new Date(data.deadline).toLocaleDateString('en-GB')}`;
+
+    const tbody = document.getElementById('admin-tbody');
+    if (!data.owners_stats.length) { document.getElementById('admin-empty').style.display='block'; return; }
+    tbody.innerHTML = data.owners_stats.map(o => {
+      const cls = o.status==='Terminated'?'badge-terminated':o.status==='In progress'?'badge-progress':'badge-notstarted';
+      return `<tr>
+        <td><code style="font-size:0.82rem;">${o.code}</code></td>
+        <td><div class="mini-prog">
+          <div class="mini-bar-wrap"><div class="mini-bar" style="width:${o.pct}%"></div></div>
+          <span style="font-weight:700;font-size:0.85rem;min-width:35px;">${o.pct}%</span>
+        </div></td>
+        <td><span class="badge-status ${cls}">${o.status}</span></td>
+        <td>${o.last_date||'—'}</td>
+        <td>${o.delegation?`<span style="font-size:0.82rem;">👤 ${o.delegation}</span>`:'—'}</td>
+        <td>${o.status!=='Terminated'?`<button class="btn-reminder" onclick="openReminder('${o.code}')"><i class="bi bi-bell me-1"></i>Remind</button>`:'<span style="color:var(--success);font-size:0.82rem;"><i class="bi bi-check-circle me-1"></i>Done</span>'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function exportAdmin() { window.location.href = '/admin/export'; }
+
+  // ── Users Management ────────────────────────────────────────────
+  async function loadUsers() {
+    const res  = await fetch('/admin/users');
+    const data = await res.json();
+    const list = document.getElementById('users-list');
+    if (!data.length) {
+      list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">No filter owner accounts yet. Click "Add User".</div>';
+      return;
+    }
+    list.innerHTML = data.map(u => `
+      <div class="user-row-item">
+        <div>
+          <div class="user-email"><i class="bi bi-person-circle me-1" style="color:var(--teal);"></i>${u.email}</div>
+          <div class="user-key">Owner Key: <b>${u.owner_key||'<span style="color:#ef4444;">Not set</span>'}</b></div>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="act-btn act-ghost" onclick="openEditModal(${u.id},'${u.email}','${u.owner_key||''}')">
+            <i class="bi bi-pencil"></i>Edit
+          </button>
+          <button class="act-btn act-danger" onclick="deleteUser(${u.id})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>`).join('');
+  }
+
+  function openCreateModal() {
+    document.getElementById('new-email').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('new-owner-key').value = '';
+    if (lastOwnersInFile.length) {
+      document.getElementById('owners-hint').style.display = 'block';
+      document.getElementById('owners-chips').innerHTML = lastOwnersInFile.map(o =>
+        `<span style="background:#e0f2fe;color:#0369a1;border-radius:5px;padding:0.2rem 0.5rem;margin:0.15rem;display:inline-block;font-size:0.8rem;cursor:pointer;" onclick="document.getElementById('new-owner-key').value='${o}'">${o}</span>`
+      ).join('');
+    }
+    document.getElementById('create-modal').classList.add('show');
+  }
+
+  async function createUser() {
+    const email    = document.getElementById('new-email').value.trim();
+    const password = document.getElementById('new-password').value.trim();
+    const owner_key= document.getElementById('new-owner-key').value.trim();
+    if (!email || !password) { alert('Email and password are required'); return; }
+    const res  = await fetch('/admin/users/create', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password, owner_key})
+    });
+    const data = await res.json();
+    if (data.success) { closeModal('create-modal'); loadUsers(); }
+    else alert('Error: ' + data.error);
+  }
+
+  function openEditModal(id, email, ownerKey) {
+    document.getElementById('edit-id').value       = id;
+    document.getElementById('edit-email').value    = email;
+    document.getElementById('edit-owner-key').value= ownerKey;
+    document.getElementById('edit-password').value = '';
+    document.getElementById('edit-modal').classList.add('show');
+  }
+
+  async function saveEdit() {
+    const id       = document.getElementById('edit-id').value;
+    const email    = document.getElementById('edit-email').value.trim();
+    const owner_key= document.getElementById('edit-owner-key').value.trim();
+    const password = document.getElementById('edit-password').value.trim();
+    const body     = {email, owner_key};
+    if (password) body.password = password;
+    const res  = await fetch(`/admin/users/${id}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) { closeModal('edit-modal'); loadUsers(); }
+    else alert('Error saving');
+  }
+
+  async function deleteUser(id) {
+    if (!confirm('Delete this user account?')) return;
+    await fetch(`/admin/users/${id}`, {method:'DELETE'});
+    loadUsers();
+  }
+
+  function openReminder(code) {
+    document.getElementById('reminder-text').textContent = `Send a reminder to filter owner "${code}" to complete their access review?`;
+    document.getElementById('reminder-modal').classList.add('show');
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+  document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('show'); }));
+</script>
+</body>
+</html>

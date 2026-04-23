@@ -307,9 +307,9 @@
       document.getElementById('s-pending').textContent    = stats.pending;
       document.getElementById('s-validated').textContent  = stats.validated;
       document.getElementById('s-deactivated').textContent= stats.deactivated;
-      document.getElementById('s-pct').textContent        = stats.pct + '%';
-      document.getElementById('p-bar').style.width        = stats.pct + '%';
-      document.getElementById('p-text').textContent       = stats.pct + '%';
+      //document.getElementById('s-pct').textContent        = stats.pct + '%';
+      //document.getElementById('p-bar').style.width        = stats.pct + '%';
+      //document.getElementById('p-text').textContent       = stats.pct + '%';
       if (stats.deadline) {
         document.getElementById('deadline-text').textContent = new Date(stats.deadline).toLocaleDateString('en-GB');
         document.getElementById('deadline-chip').style.display = 'inline-block';

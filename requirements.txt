@@ -4,5 +4,4 @@ flask-sqlalchemy
 flask-bcrypt
 pandas
 openpyxl
-gunicorn
 python-dotenv

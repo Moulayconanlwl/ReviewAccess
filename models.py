@@ -10,7 +10,7 @@ class User(UserMixin, db.Model):
     email         = db.Column(db.String(200), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role          = db.Column(db.String(20), default="filter_owner")  # 'admin' or 'filter_owner'
-    owner_key     = db.Column(db.String(200), nullable=True)          # matches 'Data entry filter owner'
+    owner_key     = db.Column(db.String(200), nullable=True)
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ReviewSession(db.Model):
@@ -36,6 +36,9 @@ class UserRow(db.Model):
     filter_owner       = db.Column(db.String(200), index=True)
     active_bfc         = db.Column(db.String(10))
     active_ad          = db.Column(db.String(10))
+    bfc_reporting_unit = db.Column(db.String(200), nullable=True)
+    entity_name        = db.Column(db.String(200), nullable=True)
+    access_right       = db.Column(db.String(10), nullable=True)
     extra_data         = db.Column(db.JSON)
     choice             = db.Column(db.String(20), default="pending")
     validator          = db.Column(db.String(200))

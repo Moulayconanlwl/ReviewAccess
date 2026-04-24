@@ -6,7 +6,6 @@ from flask_bcrypt import Bcrypt
 import pandas as pd
 from io import BytesIO
 from datetime import datetime
-from collections import defaultdict
 
 from config import Config
 from models import db, User, ReviewSession, UserRow, Delegation
@@ -39,7 +38,7 @@ def get_active_session():
     return ReviewSession.query.order_by(ReviewSession.created_at.desc()).first()
 
 
-# ── Auth ─────────────────────────────────────────────────────────────────────
+# ── Auth ──────────────────────────────────────────────────────────────────────
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
     if current_user.is_authenticated:
@@ -154,14 +153,20 @@ def upload_file():
         db.session.add(review)
 
         col_map = {
-            "Code": "code", "User Name": "user_name",
-            "Functional Profile": "functional_profile",
-            "Data entry access": "data_entry_access",
-            "Manager": "manager", "Département": "departement",
-            "Location": "location",
-            "Data entry filter owner": "filter_owner",
-            "Active BFC": "active_bfc", "Active AD": "active_ad",
-        }
+    "Code": "code",
+    "User Name": "user_name",
+    "Functional Profile": "functional_profile",
+    "Data entry access": "data_entry_access",
+    "Manager": "manager",
+    "Département": "departement",
+    "Location": "location",
+    "Data entry filter owner": "filter_owner",
+    "Active BFC": "active_bfc",
+    "Active AD": "active_ad",
+    "BFC Reporting Unit": "bfc_reporting_unit",
+    "Entity Name": "entity_name",
+    "Access Right": "access_right",
+}
 
         for _, row in df.iterrows():
             known = {}
@@ -195,20 +200,13 @@ def admin_stats():
     if not review:
         return jsonify({"error": "No active session found"}), 404
 
-    # Fetch all rows for the session
     rows = UserRow.query.filter_by(session_id=review.id).all()
-
-    # Group by unique user (code)
     users = {}
     for r in rows:
         users.setdefault(r.code, []).append(r)
 
     total = len(users)
-    validated = 0
-    deactivated = 0
-    pending = 0
-
-    # Compute global stats per unique user
+    validated = deactivated = pending = 0
     for code, u_rows in users.items():
         if all(r.choice == "validate" for r in u_rows):
             validated += 1
@@ -219,14 +217,12 @@ def admin_stats():
 
     pct = round((validated + deactivated) / total * 100) if total > 0 else 0
 
-    # Now compute stats per filter owner
-    owner_users = {}  # owner_key → {code → rows}
+    owner_users = {}
     for code, u_rows in users.items():
         owner = u_rows[0].filter_owner
         owner_users.setdefault(owner, {})
         owner_users[owner][code] = u_rows
 
-    # Include delegation data
     delegations = {
         d.owner_key: d.delegate_key
         for d in Delegation.query.filter_by(session_id=review.id).all()
@@ -235,10 +231,7 @@ def admin_stats():
     owners_stats = []
     for owner, u_map in owner_users.items():
         o_total = len(u_map)
-        o_valid = 0
-        o_deact = 0
-        o_pending = 0
-
+        o_valid = o_deact = o_pending = 0
         for code, u_rows in u_map.items():
             if all(r.choice == "validate" for r in u_rows):
                 o_valid += 1
@@ -246,41 +239,24 @@ def admin_stats():
                 o_deact += 1
             else:
                 o_pending += 1
-
         o_pct = round((o_valid + o_deact) / o_total * 100) if o_total > 0 else 0
-        status = (
-            "Terminated" if o_pct == 100 else
-            "In progress" if o_pct > 0 else
-            "Not started"
-        )
-
-        # Last validation date among the user’s rows
+        status = ("Terminated" if o_pct == 100 else "In progress" if o_pct > 0 else "Not started")
         last_dt = None
         for _, user_rows in u_map.items():
             for r in user_rows:
                 if r.validated_at:
                     last_dt = max(last_dt, r.validated_at) if last_dt else r.validated_at
-
         owners_stats.append({
-            "code": owner,
-            "name": owner,
-            "pct": o_pct,
-            "status": status,
+            "code": owner, "name": owner, "pct": o_pct, "status": status,
             "last_date": last_dt.strftime("%d/%m/%Y") if last_dt else "",
             "delegation": delegations.get(owner, ""),
-            "total": o_total,
-            "deactivated": o_deact,
+            "total": o_total, "deactivated": o_deact,
         })
 
     return jsonify({
-        "success": True,
-        "total": total,
-        "validated": validated,
-        "deactivated": deactivated,
-        "pending": pending,
-        "pct": pct,
-        "deadline": review.deadline,
-        "quarter": review.quarter,
+        "success": True, "total": total, "validated": validated,
+        "deactivated": deactivated, "pending": pending, "pct": pct,
+        "deadline": review.deadline, "quarter": review.quarter,
         "owners_stats": owners_stats,
     })
 
@@ -297,6 +273,8 @@ def admin_export():
         "Data entry access": r.data_entry_access,
         "Manager": r.manager, "Département": r.departement,
         "Location": r.location, "Filter Owner": r.filter_owner,
+        "BFC Reporting Unit": r.bfc_reporting_unit,
+        "Entity Name": r.entity_name,
         "Active BFC": r.active_bfc, "Choice": r.choice,
         "Validator": r.validator, "Validated At": r.validated_at
     } for r in rows]
@@ -332,16 +310,13 @@ def get_my_users():
             .filter(UserRow.filter_owner.in_(keys_to_show))
             .all())
 
-    # One row per unique Code
     seen = {}
     for r in rows:
         if r.code not in seen:
             seen[r.code] = {
                 "code": r.code, "user_name": r.user_name,
-                "functional_profile": r.functional_profile,
                 "data_entry_access": r.data_entry_access,
-                "manager": r.manager, "departement": r.departement,
-                "location": r.location, "active_bfc": r.active_bfc,
+                "manager": r.manager, "location": r.location,
                 "choice": r.choice, "line_count": 1,
             }
         else:
@@ -377,14 +352,20 @@ def get_user_details(code):
         "code": code,
         "user_name": rows[0].user_name,
         "details": [{
-            "id": r.id, "code": r.code, "user_name": r.user_name,
-            "functional_profile": r.functional_profile,
-            "data_entry_access": r.data_entry_access,
-            "manager": r.manager, "departement": r.departement,
-            "location": r.location, "active_bfc": r.active_bfc,
-            "active_ad": r.active_ad, "choice": r.choice,
-            "extra": r.extra_data or {},
-        } for r in rows]
+    "id": r.id,
+    "code": r.code,
+    "user_name": r.user_name,
+    "functional_profile": r.functional_profile,
+    "data_entry_access": r.data_entry_access,
+    "location": r.location,
+    "bfc_reporting_unit": r.bfc_reporting_unit,
+    "entity_name": r.entity_name,
+    "access_right": r.access_right,
+    "active_bfc": r.active_bfc,
+    "active_ad": r.active_ad,
+    "choice": r.choice,
+    "extra": r.extra_data or {},
+} for r in rows]
     })
 
 @app.route("/my/update_choice", methods=["POST"])
@@ -415,6 +396,45 @@ def update_choice():
     db.session.commit()
     return jsonify({"success": True, "updated": len(rows)})
 
+
+# ── Phase 1: Inline field update endpoint ─────────────────────────────────────
+EDITABLE_FIELDS = {
+    "data_entry_access",
+    "functional_profile",
+    "location",
+    "bfc_reporting_unit",
+    "entity_name",
+    "access_right",
+}
+
+@app.route("/my/update_field", methods=["POST"])
+@owner_required
+def update_field():
+    data  = request.json
+    row_id = data.get("row_id")
+    field  = data.get("field")
+    value  = data.get("value", "")
+
+    if field not in EDITABLE_FIELDS:
+        return jsonify({"error": f"Field '{field}' is not editable"}), 400
+
+    review    = get_active_session()
+    owner_key = current_user.owner_key or ""
+    delegated_keys = [
+        d.owner_key for d in
+        Delegation.query.filter_by(session_id=review.id, delegate_key=owner_key).all()
+    ]
+    keys_to_show = list(set([owner_key] + delegated_keys))
+
+    row = UserRow.query.get_or_404(row_id)
+    if row.session_id != review.id or row.filter_owner not in keys_to_show:
+        abort(403)
+
+    setattr(row, field, value.strip() if value else None)
+    db.session.commit()
+    return jsonify({"success": True, "row_id": row_id, "field": field, "value": value})
+
+
 @app.route("/my/signoff", methods=["POST"])
 @owner_required
 def signoff():
@@ -425,45 +445,30 @@ def signoff():
         r.signoff_at = datetime.utcnow()
     db.session.commit()
     return jsonify({"success": True})
+
 @app.route("/my/stats")
 @owner_required
 def my_stats():
     review    = get_active_session()
     owner_key = current_user.owner_key or ""
-
     rows = UserRow.query.filter_by(session_id=review.id, filter_owner=owner_key).all()
-
-    # Group by code (unique user)
     users = {}
     for r in rows:
         users.setdefault(r.code, []).append(r)
-
     total = len(users)
-
-    validated = 0
-    deactivated = 0
-    pending = 0
-
+    validated = deactivated = pending = 0
     for code, user_rows in users.items():
-        # A user is validated only if ALL rows are validated
         if all(r.choice == "validate" for r in user_rows):
             validated += 1
-        # A user is deactivated only if ALL rows are deactivated
         elif all(r.choice == "deactivate" for r in user_rows):
             deactivated += 1
         else:
             pending += 1
-
     pct = round((validated + deactivated) / total * 100) if total > 0 else 0
-
     return jsonify({
-        "success": True,
-        "total": total,
-        "validated": validated,
-        "deactivated": deactivated,
-        "pending": pending,
-        "pct": pct,
-        "deadline": review.deadline,
+        "success": True, "total": total,
+        "validated": validated, "deactivated": deactivated,
+        "pending": pending, "pct": pct, "deadline": review.deadline,
     })
 
 @app.route("/my/delegate", methods=["POST"])
@@ -492,7 +497,10 @@ def export_my_data():
         "Functional Profile": r.functional_profile,
         "Data entry access": r.data_entry_access,
         "Manager": r.manager, "Département": r.departement,
-        "Location": r.location, "Choice": r.choice
+        "Location": r.location,
+        "BFC Reporting Unit": r.bfc_reporting_unit,
+        "Entity Name": r.entity_name,
+        "Choice": r.choice
     } for r in rows]
     df     = pd.DataFrame(data)
     output = BytesIO()

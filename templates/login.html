@@ -4,46 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BFC Access Review — Login</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
-    body { background: linear-gradient(135deg, #1a8a8f 0%, #1a237e 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .login-card { background: white; border-radius: 14px; padding: 2.5rem; width: 100%; max-width: 420px; box-shadow: 0 25px 60px rgba(0,0,0,0.35); }
-    .login-title { font-size: 1.5rem; font-weight: 700; color: #1a8a8f; text-align: center; margin-bottom: 0.25rem; }
-    .login-sub { text-align: center; color: #64748b; font-size: 0.88rem; margin-bottom: 1.75rem; }
-    .form-label { font-size: 0.8rem; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; }
-    .form-control { border: 2px solid #e5e7eb; border-radius: 7px; padding: 0.7rem 0.9rem; font-size: 0.95rem; }
-    .form-control:focus { border-color: #1a8a8f; box-shadow: 0 0 0 3px rgba(26,138,143,0.12); }
-    .btn-login { background: #1a8a8f; color: white; border: none; width: 100%; padding: 0.85rem; border-radius: 7px; font-weight: 700; font-size: 1rem; transition: background 0.2s; }
-    .btn-login:hover { background: #156b6f; color: white; }
-    .alert-error { background: #fee2e2; color: #991b1b; border-radius: 7px; padding: 0.7rem 1rem; font-size: 0.88rem; margin-bottom: 1.25rem; border: 1px solid #fecaca; }
-    .divider { border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
-    img.logo { height: 48px; display: block; margin: 0 auto 1.25rem; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#1a8a8f,#1a237e);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    .card{background:white;border-radius:14px;padding:2.5rem 2rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.25);}
+    .logo{text-align:center;margin-bottom:1.75rem;}
+    .logo img{height:40px;margin-bottom:0.75rem;}
+    .logo h1{font-size:1.2rem;font-weight:700;color:#0f172a;}
+    .logo p{font-size:0.82rem;color:#64748b;margin-top:0.2rem;}
+    label{display:block;font-size:0.78rem;font-weight:600;color:#0f172a;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.35rem;}
+    input{width:100%;padding:0.7rem 0.9rem;border:2px solid #d1e8ea;border-radius:8px;font-size:0.92rem;outline:none;transition:border 0.2s;}
+    input:focus{border-color:#1a8a8f;box-shadow:0 0 0 3px rgba(26,138,143,0.12);}
+    .field{margin-bottom:1rem;}
+    .error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:0.65rem 0.9rem;border-radius:7px;font-size:0.85rem;margin-bottom:1rem;}
+    button{width:100%;padding:0.8rem;background:#1a8a8f;color:white;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;transition:background 0.2s;margin-top:0.5rem;}
+    button:hover{background:#156b6f;}
   </style>
 </head>
 <body>
-  <div class="login-card">
-    <img src="/static/getsitelogo.png" alt="SCOR" class="logo" onerror="this.style.display='none'">
-    <div class="login-title"><i class="bi bi-shield-lock me-2"></i>BFC Access Review</div>
-    <div class="login-sub">BFC IFRS — Quarterly User Access Review</div>
-
-    {% if error %}
-    <div class="alert-error"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
-    {% endif %}
-
-    <form method="POST" action="/login">
-      <div class="mb-3">
-        <label class="form-label">Email address</label>
-        <input type="email" name="email" class="form-control" placeholder="you@scor.com" required autofocus>
-      </div>
-      <div class="mb-4">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-      </div>
-      <button type="submit" class="btn btn-login">
-        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
-      </button>
-    </form>
+<div class="card">
+  <div class="logo">
+    <img src="/static/getsitelogo.png" alt="SCOR" onerror="this.style.display='none'">
+    <h1>BFC Access Review</h1>
+    <p>Sign in to continue</p>
   </div>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="POST">
+    <div class="field"><label>Email</label><input type="email" name="email" required autofocus placeholder="you@scor.com"></div>
+    <div class="field"><label>Password</label><input type="password" name="password" required placeholder="••••••••"></div>
+    <button type="submit">Sign In</button>
+  </form>
+</div>
 </body>
 </html>

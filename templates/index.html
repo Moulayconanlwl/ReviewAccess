@@ -4,547 +4,1329 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BFC Access Review</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
-    :root {
-      --teal: #1a8a8f; --teal-dark: #156b6f; --teal-light: #2ba7ad;
-      --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
-      --bg: #f0f9fa; --border: #d1e8ea; --text: #0f172a; --muted: #64748b;
-      --shadow: 0 2px 8px rgba(0,0,0,0.08); --shadow-lg: 0 10px 30px rgba(0,0,0,0.12);
+    :root{
+      --teal:#1a8a8f;
+      --teal-dark:#156b6f;
+      --teal-light:#e6f7f8;
+      --success:#10b981;
+      --danger:#ef4444;
+      --warning:#f59e0b;
+      --bg:#f0f4f8;
+      --surface:#ffffff;
+      --border:#d1e8ea;
+      --text:#0f172a;
+      --muted:#64748b;
+      --faint:#94a3b8;
+      --shadow:0 1px 4px rgba(0,0,0,0.07);
+      --shadow-md:0 4px 16px rgba(0,0,0,0.10);
+      --radius:8px;
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1a8a8f, #1a237e); min-height: 100vh; }
-    .wrap { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 
-    /* Navbar */
-    .navbar { background: rgba(255,255,255,0.12); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.2); padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 1.5rem; border-radius: 10px; }
-    .navbar-brand { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
-    .navbar-user { font-size: 0.88rem; display: flex; align-items: center; gap: 1rem; }
-    .btn-logout { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
-    .btn-logout:hover { background: rgba(255,255,255,0.3); color: white; }
+    *{margin:0;padding:0;box-sizing:border-box;}
 
-    /* Header */
-    .page-header { text-align: center; color: white; margin-bottom: 1.5rem; }
-    .page-header h1 { font-size: 1.8rem; font-weight: 700; }
-    .deadline-chip { display: inline-block; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); border-radius: 20px; padding: 0.3rem 1rem; font-size: 0.83rem; margin-top: 0.5rem; color: white; }
+    body{
+      font-family:'Segoe UI',system-ui,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      font-size:13px;
+    }
 
-    /* Stats */
-    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .stat-card { background: white; border-radius: 10px; padding: 1.1rem 1.25rem; box-shadow: var(--shadow); border-left: 4px solid var(--teal); }
-    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 0.35rem; }
-    .stat-value { font-size: 1.9rem; font-weight: 700; color: var(--teal); }
-    .stat-value.ok { color: var(--success); }
-    .stat-value.bad { color: var(--danger); }
-    .stat-value.warn { color: var(--warning); }
+    .shell{
+      display:flex;
+      flex-direction:column;
+      min-height:100vh;
+    }
 
-    /* Progress */
-    .progress-wrap { background: white; border-radius: 10px; padding: 1rem 1.5rem; box-shadow: var(--shadow); margin-bottom: 1.5rem; }
-    .progress-label { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; color: var(--muted); margin-bottom: 0.4rem; }
-    .progress { height: 8px; background: #e5e7eb; border-radius: 4px; }
-    .progress-bar { background: var(--teal); border-radius: 4px; transition: width 0.5s ease; }
+    .header{
+      background:linear-gradient(90deg,#1a8a8f,#1a237e);
+      color:white;
+      padding:0 1.5rem;
+      height:48px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      flex-shrink:0;
+      box-shadow:0 2px 8px rgba(0,0,0,0.18);
+    }
 
-    /* Card */
-    .card { background: white; border-radius: 10px; box-shadow: var(--shadow-lg); border: none; margin-bottom: 1.5rem; }
-    .card-body { padding: 1.5rem; }
+    .header-brand{
+      display:flex;
+      align-items:center;
+      gap:0.6rem;
+      font-weight:700;
+      font-size:0.95rem;
+    }
 
-    /* Filters */
-    .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 1rem; }
-    .filter-label { font-size: 0.78rem; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem; display: block; }
-    .filter-select { width: 100%; padding: 0.65rem; border: 2px solid var(--border); border-radius: 7px; font-size: 0.9rem; background: white; cursor: pointer; }
-    .filter-select:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,138,143,0.1); }
+    .header-brand img{height:26px;}
 
-    /* Bulk actions */
-    .bulk-bar { background: var(--bg); padding: 0.85rem 1.25rem; border-radius: 8px; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
-    .bulk-label { font-weight: 600; font-size: 0.88rem; color: var(--text); }
-    .bbtn { padding: 0.45rem 1rem; border: none; border-radius: 6px; font-weight: 600; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s; }
-    .bbtn-validate { background: var(--success); color: white; }
-    .bbtn-validate:hover { background: #059669; }
-    .bbtn-deactivate { background: var(--danger); color: white; }
-    .bbtn-deactivate:hover { background: #dc2626; }
-    .bbtn-reset { background: #6b7280; color: white; }
-    .bbtn-reset:hover { background: #4b5563; }
-    .bbtn-teal { background: var(--teal); color: white; }
-    .bbtn-teal:hover { background: var(--teal-dark); }
-    .bbtn-grey { background: #9ca3af; color: white; }
+    .header-right{
+      display:flex;
+      align-items:center;
+      gap:1rem;
+      font-size:0.8rem;
+    }
 
-    /* Table */
-    .table-wrap { overflow-x: auto; overflow-y: auto; max-height: 600px; border-radius: 8px; border: 1px solid var(--border); }
-    .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.88rem; }
-    .data-table thead { position: sticky; top: 0; z-index: 10; }
-    .data-table th { background: var(--teal); color: white; padding: 0.8rem 1rem; text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-    .data-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); background: white; }
-    .data-table tbody tr:hover td { background: var(--bg); }
-    .data-table tbody tr:last-child td { border-bottom: none; }
-    .data-table tr.expanded-row td { background: #f8fafc; }
+    .btn-logout{
+      background:rgba(255,255,255,0.18);
+      border:1px solid rgba(255,255,255,0.3);
+      color:white;
+      padding:0.3rem 0.75rem;
+      border-radius:5px;
+      font-size:0.78rem;
+      font-weight:600;
+      text-decoration:none;
+      transition:background .2s;
+    }
 
-    /* Choice select */
-    .choice-sel { padding: 0.38rem 0.65rem; border-radius: 6px; border: 2px solid var(--border); font-size: 0.82rem; font-weight: 600; cursor: pointer; }
-    .choice-sel.validated { border-color: var(--success); background: #d1fae5; color: #065f46; }
-    .choice-sel.deactivated { border-color: var(--danger); background: #fee2e2; color: #991b1b; }
+    .btn-logout:hover{background:rgba(255,255,255,0.3);}
 
-    /* Expand detail */
-    .detail-row { display: none; }
-    .detail-row.open { display: table-row; }
-    .detail-box { background: #f8fafc; border-radius: 8px; padding: 1rem; border: 1px solid var(--border); }
-    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 0.75rem; }
-    .detail-item label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.2rem; }
-    .detail-item span { font-size: 0.88rem; color: var(--text); font-weight: 500; }
-    .detail-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.78rem; font-weight: 600; background: #e0f2fe; color: #0369a1; margin: 0.2rem 0.2rem 0 0; }
+    .stats-wrap{padding:1rem 1.5rem 0;}
 
-    /* Row expand btn */
-    .btn-expand { background: none; border: none; cursor: pointer; color: var(--teal); font-size: 1rem; padding: 0.2rem 0.4rem; border-radius: 4px; transition: background 0.15s; }
-    .btn-expand:hover { background: var(--bg); }
+    .stats-bar{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+      gap:0.75rem;
+      margin-bottom:0.75rem;
+    }
 
-    /* Action buttons */
-    .act-btn { padding: 0.6rem 1.2rem; border: none; border-radius: 7px; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s; }
-    .act-btn-teal { background: var(--teal); color: white; }
-    .act-btn-teal:hover { background: var(--teal-dark); transform: translateY(-1px); }
-    .act-btn-purple { background: #7c3aed; color: white; }
-    .act-btn-purple:hover { background: #6d28d9; }
+    .stat-card{
+      background:var(--surface);
+      border-radius:var(--radius);
+      padding:0.85rem 1rem;
+      box-shadow:var(--shadow);
+      border-top:3px solid var(--teal);
+    }
 
-    /* Export dropdown */
-    .exp-drop { position: relative; display: inline-block; }
-    .exp-menu { display: none; position: absolute; right: 0; top: 110%; background: white; border-radius: 8px; box-shadow: var(--shadow-lg); min-width: 200px; z-index: 200; border: 1px solid var(--border); }
-    .exp-menu.show { display: block; }
-    .exp-item { padding: 0.65rem 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
-    .exp-item:last-child { border-bottom: none; }
-    .exp-item:hover { background: var(--bg); color: var(--teal); }
+    .stat-label{
+      font-size:0.7rem;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      font-weight:600;
+      margin-bottom:.25rem;
+    }
 
-    /* Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-    .modal-overlay.show { display: flex; }
-    .modal-box { background: white; border-radius: 12px; padding: 2rem; max-width: 560px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
-    .modal-title { font-size: 1.15rem; font-weight: 700; color: var(--teal); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
-    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
-    .modal-input { width: 100%; padding: 0.65rem; border: 2px solid var(--border); border-radius: 7px; font-size: 0.9rem; margin-top: 0.4rem; }
-    .modal-input:focus { outline: none; border-color: var(--teal); }
+    .stat-value{
+      font-size:1.65rem;
+      font-weight:700;
+      color:var(--teal);
+      line-height:1;
+    }
 
-    /* Misc */
-    .section-title { font-size: 0.95rem; font-weight: 700; color: var(--teal); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
-    .empty-state { text-align: center; padding: 3rem; color: var(--muted); }
-    .empty-state i { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; color: var(--border); }
-    input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--teal); }
-    .cb-cell { width: 36px; text-align: center; }
-    .line-count-badge { display: inline-block; background: #e0f2fe; color: #0369a1; border-radius: 10px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700; margin-left: 0.3rem; }
-    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(26,138,143,0.2); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 768px) { .stats-bar { grid-template-columns: 1fr 1fr; } .filters-grid { grid-template-columns: 1fr; } }
+    .stat-value.ok{color:var(--success);}
+    .stat-value.bad{color:var(--danger);}
+    .stat-value.warn{color:var(--warning);}
+
+    .progress-card{
+      background:var(--surface);
+      border-radius:var(--radius);
+      padding:0.75rem 1rem;
+      box-shadow:var(--shadow);
+      display:flex;
+      align-items:center;
+      gap:1rem;
+      margin-bottom:0.75rem;
+    }
+
+    .progress-info{flex:1;}
+
+    .progress-label{
+      font-size:0.78rem;
+      font-weight:600;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:0.3rem;
+    }
+
+    .progress-track{
+      height:6px;
+      background:#e2e8f0;
+      border-radius:3px;
+    }
+
+    .progress-fill{
+      height:6px;
+      background:var(--teal);
+      border-radius:3px;
+      transition:width .5s;
+    }
+
+    .deadline-badge{
+      font-size:0.72rem;
+      background:#fef3c7;
+      color:#92400e;
+      padding:0.25rem 0.6rem;
+      border-radius:12px;
+      font-weight:600;
+      white-space:nowrap;
+    }
+
+    .signoff-bar{
+      background:linear-gradient(90deg,#f0fafa,#e6f7f8);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:.75rem 1rem;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin:0 1.5rem .75rem;
+      font-size:.82rem;
+    }
+
+    .signoff-bar strong{color:var(--teal);}
+
+    .toolbar{
+      padding:0 1.5rem;
+      display:flex;
+      align-items:center;
+      gap:0.6rem;
+      margin-bottom:0.75rem;
+      flex-wrap:wrap;
+    }
+
+    .search-wrap{
+      position:relative;
+      flex:1;
+      min-width:200px;
+      max-width:320px;
+    }
+
+    .search-wrap i{
+      position:absolute;
+      left:0.65rem;
+      top:50%;
+      transform:translateY(-50%);
+      color:var(--faint);
+      font-size:0.85rem;
+    }
+
+    .search-input{
+      width:100%;
+      padding:0.45rem 0.75rem 0.45rem 2rem;
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      font-size:0.82rem;
+      outline:none;
+      background:var(--surface);
+    }
+
+    .search-input:focus{border-color:var(--teal);}
+
+    .filter-select{
+      padding:0.45rem 0.6rem;
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      font-size:0.82rem;
+      background:var(--surface);
+      outline:none;
+      cursor:pointer;
+    }
+
+    .filter-select:focus{border-color:var(--teal);}
+
+    .toolbar-right{
+      margin-left:auto;
+      display:flex;
+      gap:0.5rem;
+    }
+
+    .btn{
+      padding:0.45rem 0.9rem;
+      border:none;
+      border-radius:var(--radius);
+      font-size:0.8rem;
+      font-weight:600;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:0.35rem;
+      transition:all .18s;
+    }
+
+    .btn-primary{
+      background:var(--teal);
+      color:white;
+    }
+
+    .btn-primary:hover{background:var(--teal-dark);}
+
+    .btn-success{
+      background:#10b981;
+      color:white;
+    }
+
+    .btn-success:hover{background:#059669;}
+
+    .btn-ghost{
+      background:#f1f5f9;
+      color:var(--text);
+      border:1px solid var(--border);
+    }
+
+    .btn-ghost:hover{background:#e2e8f0;}
+
+    .btn-save{
+      background:#1a8a8f;
+      color:white;
+      position:relative;
+    }
+
+    .btn-save:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+    }
+
+    .save-dot{
+      position:absolute;
+      top:-3px;
+      right:-3px;
+      width:9px;
+      height:9px;
+      background:#f59e0b;
+      border-radius:50%;
+      border:2px solid white;
+      display:none;
+    }
+
+    .btn-save.has-changes .save-dot{display:block;}
+
+    .table-outer{
+      padding:0 1.5rem 1.5rem;
+      flex:1;
+    }
+
+    .table-card{
+      background:var(--surface);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow-md);
+      overflow:hidden;
+      border:1px solid var(--border);
+    }
+
+    .fiori-table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:0.82rem;
+    }
+
+    .fiori-table thead tr{
+      background:#f8fafc;
+      border-bottom:2px solid var(--teal);
+    }
+
+    .fiori-table th{
+      padding:0.65rem 0.85rem;
+      text-align:left;
+      font-size:0.7rem;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      color:var(--muted);
+      white-space:nowrap;
+      user-select:none;
+    }
+
+    .fiori-table th.col-expand{width:36px;}
+    .fiori-table th.col-check{width:36px;}
+    .fiori-table th.col-action{width:200px;text-align:center;}
+
+    .main-row{
+      cursor:pointer;
+      transition:background .15s;
+    }
+
+    .main-row:hover td{background:#f0fafa;}
+
+    .main-row td{
+      padding:0.6rem 0.85rem;
+      border-bottom:1px solid #f1f5f9;
+      vertical-align:middle;
+    }
+
+    .main-row.expanded td{
+      background:var(--teal-light);
+      border-bottom:none;
+      font-weight:600;
+    }
+
+    .main-row.deactivated td{opacity:.55;}
+
+    .expand-btn{
+      width:24px;
+      height:24px;
+      border:none;
+      background:none;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--muted);
+      transition:transform .2s,color .2s;
+      border-radius:4px;
+    }
+
+    .expand-btn:hover{
+      background:#e0f2f2;
+      color:var(--teal);
+    }
+
+    .expand-btn.open{
+      transform:rotate(90deg);
+      color:var(--teal);
+    }
+
+    .line-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:#e0f2f2;
+      color:var(--teal);
+      border-radius:10px;
+      font-size:0.68rem;
+      font-weight:700;
+      padding:0.1rem 0.45rem;
+      margin-left:0.4rem;
+    }
+
+    .action-cell{
+      display:flex;
+      gap:0.35rem;
+      justify-content:center;
+    }
+
+    .act-sm{
+      padding:0.3rem 0.65rem;
+      border:none;
+      border-radius:5px;
+      font-size:0.75rem;
+      font-weight:600;
+      cursor:pointer;
+      transition:all .15s;
+    }
+
+    .act-validate{
+      background:#d1fae5;
+      color:#065f46;
+    }
+
+    .act-validate:hover{background:#a7f3d0;}
+
+    .act-deactivate{
+      background:#fee2e2;
+      color:#991b1b;
+    }
+
+    .act-deactivate:hover{background:#fecaca;}
+
+    .act-reset{
+      background:#f1f5f9;
+      color:#475569;
+    }
+
+    .act-reset:hover{background:#e2e8f0;}
+
+    .detail-row{display:none;}
+    .detail-row.open{display:table-row;}
+
+    .detail-row > td{
+      background:#f8fdfd;
+      padding:0;
+      border-bottom:1px solid #dbeeee;
+    }
+
+    .detail-box{
+      padding:0.45rem 0.85rem 0.65rem 2.5rem;
+    }
+
+    .detail-header{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;
+      gap:0.5rem;
+      background:#f0fafa;
+      padding:0.4rem 0.5rem;
+      border-bottom:1px solid #e2f0f0;
+      font-size:0.68rem;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      color:var(--teal);
+    }
+
+    .detail-line{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;
+      gap:0.5rem;
+      padding:0.35rem 0.5rem;
+      border-bottom:1px solid #edf7f7;
+      align-items:center;
+    }
+
+    .detail-line:last-child{border-bottom:none;}
+    .detail-line:hover{background:#eef8f8;}
+
+    .editable-cell{
+      position:relative;
+      border-radius:4px;
+      transition:background .15s,outline .15s;
+      cursor:text;
+      padding:0.25rem 0.4rem;
+      min-height:28px;
+      display:flex;
+      align-items:center;
+    }
+
+    .editable-cell:hover{
+      background:#e0f2f2;
+      outline:1px dashed var(--teal);
+    }
+
+    .editable-cell.editing{
+      background:white;
+      outline:2px solid var(--teal);
+      box-shadow:0 0 0 3px rgba(26,138,143,.12);
+      cursor:text;
+      padding:0;
+    }
+
+    .editable-cell.dirty{
+      background:#fffbeb;
+      outline:1px solid #f59e0b;
+    }
+
+    .editable-cell.dirty:hover{background:#fef3c7;}
+
+    .editable-cell input,
+    .editable-cell select{
+      width:100%;
+      border:none;
+      outline:none;
+      background:transparent;
+      font-size:0.82rem;
+      font-family:inherit;
+      color:var(--text);
+      padding:0.25rem 0.4rem;
+    }
+
+    .cell-display{
+      font-size:0.82rem;
+      color:var(--text);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:180px;
+    }
+
+    .cell-empty{
+      color:var(--faint);
+      font-style:italic;
+      font-size:0.75rem;
+    }
+
+    input[type=checkbox]{
+      width:14px;
+      height:14px;
+      cursor:pointer;
+      accent-color:var(--teal);
+    }
+
+    .toast-wrap{
+      position:fixed;
+      bottom:1.5rem;
+      right:1.5rem;
+      display:flex;
+      flex-direction:column;
+      gap:0.5rem;
+      z-index:9999;
+    }
+
+    .toast{
+      background:#1a8a8f;
+      color:white;
+      padding:0.65rem 1.1rem;
+      border-radius:8px;
+      font-size:0.82rem;
+      font-weight:600;
+      box-shadow:var(--shadow-md);
+      display:flex;
+      align-items:center;
+      gap:0.5rem;
+      animation:slideIn .25s ease;
+      max-width:340px;
+    }
+
+    .toast.error{background:#dc2626;}
+    .toast.warn{background:#d97706;}
+
+    @keyframes slideIn{
+      from{opacity:0;transform:translateY(12px);}
+      to{opacity:1;transform:translateY(0);}
+    }
+
+    .modal-overlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      z-index:1000;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .modal-overlay.show{display:flex;}
+
+    .modal-box{
+      background:white;
+      border-radius:12px;
+      padding:1.75rem;
+      max-width:440px;
+      width:90%;
+      box-shadow:0 20px 60px rgba(0,0,0,.2);
+    }
+
+    .modal-title{
+      font-size:1rem;
+      font-weight:700;
+      color:var(--teal);
+      margin-bottom:1rem;
+      display:flex;
+      align-items:center;
+      gap:.5rem;
+    }
+
+    .modal-input{
+      width:100%;
+      padding:.6rem .75rem;
+      border:2px solid var(--border);
+      border-radius:var(--radius);
+      font-size:.88rem;
+      margin-top:.3rem;
+      outline:none;
+    }
+
+    .modal-input:focus{border-color:var(--teal);}
+
+    .modal-actions{
+      display:flex;
+      gap:.6rem;
+      justify-content:flex-end;
+      margin-top:1rem;
+    }
+
+    .form-group{margin-bottom:.8rem;}
+
+    .form-label{
+      font-size:.72rem;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      color:var(--text);
+    }
+
+    .spinner{
+      display:inline-block;
+      width:18px;
+      height:18px;
+      border:2.5px solid rgba(26,138,143,.2);
+      border-top-color:var(--teal);
+      border-radius:50%;
+      animation:spin .7s linear infinite;
+    }
+
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    .empty-state{
+      text-align:center;
+      padding:3rem 1rem;
+      color:var(--muted);
+    }
+
+    .empty-state i{
+      font-size:2.5rem;
+      display:block;
+      margin-bottom:.75rem;
+      color:var(--faint);
+    }
+
+    .empty-state p{font-size:.88rem;}
+
+    @media (max-width: 1200px){
+      .table-card{overflow-x:auto;}
+      .fiori-table{min-width:1200px;}
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
+<div class="shell">
 
-  <!-- Navbar -->
-  <div class="navbar">
-    <div class="navbar-brand">
-      <img src="/static/getsitelogo.png" alt="SCOR" style="height:32px;" onerror="this.style.display='none'">
-      <i class="bi bi-shield-check"></i> BFC Access Review
+  <div class="header">
+    <div class="header-brand">
+      <img src="/static/getsitelogo.png" alt="SCOR" onerror="this.style.display='none'">
+      <i class="bi bi-shield-fill-check"></i>
+      BFC Access Review
     </div>
-    <div class="navbar-user">
-      <span><i class="bi bi-person-circle me-1"></i>{{ user.email }}</span>
-      <a href="/logout" class="btn-logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
-    </div>
-  </div>
-
-  <!-- Header -->
-  <div class="page-header">
-    <h1 id="quarter-label">BFC User Access Review</h1>
-    <p style="color:rgba(255,255,255,0.8);font-size:0.9rem;margin-top:0.25rem;">
-      As requested by external auditors — please confirm if the users below still need BFC IFRS access.
-    </p>
-    <div class="deadline-chip" id="deadline-chip" style="display:none;">
-      <i class="bi bi-calendar-event me-1"></i>Your feedback is requested before <span id="deadline-text"></span>
+    <div class="header-right">
+      <span><i class="bi bi-person-circle"></i> {{ user.email }}</span>
+      <button class="btn btn-ghost" onclick="openDelegateModal()" style="font-size:.78rem;padding:.3rem .7rem;">
+        <i class="bi bi-person-plus"></i> Delegate
+      </button>
+      <a href="/logout" class="btn-logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
     </div>
   </div>
 
-  <!-- Stats -->
-  <div class="stats-bar">
-    <div class="stat-card"><div class="stat-label">To Validate</div><div class="stat-value warn" id="s-pending">—</div></div>
-    <div class="stat-card"><div class="stat-label">Validated</div><div class="stat-value ok" id="s-validated">—</div></div>
-    <div class="stat-card"><div class="stat-label">Deactivated</div><div class="stat-value bad" id="s-deactivated">—</div></div>
-    <div class="stat-card"><div class="stat-label">% Validation</div><div class="stat-value" id="s-pct">—</div></div>
-  </div>
+  <div class="stats-wrap">
+    <div class="stats-bar">
+      <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value" id="s-total">—</div></div>
+      <div class="stat-card"><div class="stat-label">Validated</div><div class="stat-value ok" id="s-valid">—</div></div>
+      <div class="stat-card"><div class="stat-label">Deactivated</div><div class="stat-value bad" id="s-deact">—</div></div>
+      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value warn" id="s-pend">—</div></div>
+    </div>
 
-  <!-- Progress -->
-
-  <!-- Filters -->
-  <div class="card">
-    <div class="card-body">
-      <div class="section-title"><i class="bi bi-funnel-fill"></i>Filter Users</div>
-      <div class="filters-grid">
-        <div>
-          <label class="filter-label">Functional Profile</label>
-          <select class="filter-select" id="f-profile" onchange="applyFilters()"><option value="">All Profiles</option></select>
+    <div class="progress-card">
+      <div class="progress-info">
+        <div class="progress-label">
+          <span id="s-quarter">Validation Progress</span>
+          <span id="s-pct-txt">0%</span>
         </div>
-        <div>
-          <label class="filter-label">Data Entry Access</label>
-          <select class="filter-select" id="f-access" onchange="applyFilters()"><option value="">All</option></select>
-        </div>
-        <div>
-          <label class="filter-label">Location</label>
-          <select class="filter-select" id="f-location" onchange="applyFilters()"><option value="">All Locations</option></select>
-        </div>
-        <div>
-          <label class="filter-label">Choice</label>
-          <select class="filter-select" id="f-choice" onchange="applyFilters()">
-            <option value="">All</option>
-            <option value="pending">⏳ Pending</option>
-            <option value="validate">✅ Validated</option>
-            <option value="deactivate">❌ Deactivated</option>
-          </select>
+        <div class="progress-track">
+          <div class="progress-fill" id="s-pct-bar" style="width:0%"></div>
         </div>
       </div>
-      <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
-        <button class="act-btn" style="background:#f1f5f9;color:#374151;" onclick="clearFilters()"><i class="bi bi-x-circle"></i>Clear Filters</button>
-        <button class="act-btn act-btn-purple" onclick="openSignoffModal()"><i class="bi bi-pen"></i>Sign Off</button>
-        <button class="act-btn act-btn-teal" onclick="openDelegateModal()"><i class="bi bi-person-plus"></i>Delegate</button>
-      </div>
+      <div class="deadline-badge" id="s-deadline" style="display:none"></div>
     </div>
   </div>
 
-  <!-- Data Table -->
-  <div class="card">
-    <div class="card-body">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
-        <div class="section-title" style="margin-bottom:0;">
-          <i class="bi bi-table"></i>Users
-          <span style="font-size:0.82rem;font-weight:400;color:var(--muted);" id="results-count">(loading…)</span>
-        </div>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <div class="exp-drop">
-            <button class="act-btn act-btn-teal" onclick="toggleExpMenu(event)"><i class="bi bi-download"></i>Export <i class="bi bi-chevron-down"></i></button>
-            <div class="exp-menu" id="exp-menu">
-              <div class="exp-item" onclick="exportData('all')"><i class="bi bi-file-earmark-spreadsheet"></i>Export All</div>
-              <div class="exp-item" onclick="exportData('filtered')"><i class="bi bi-filter"></i>Export Filtered</div>
-              <div class="exp-item" onclick="exportData('validate')"><i class="bi bi-check-circle"></i>Validated Only</div>
-              <div class="exp-item" onclick="exportData('deactivate')"><i class="bi bi-x-circle"></i>Deactivated Only</div>
-            </div>
-          </div>
-        </div>
+  <div class="signoff-bar" id="signoff-bar" style="display:none">
+    <span><i class="bi bi-patch-check"></i> All reviews complete! <strong>Sign off</strong> to confirm your submission.</span>
+    <button class="btn btn-success" onclick="doSignoff()"><i class="bi bi-check2-all"></i> Sign Off</button>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <i class="bi bi-search"></i>
+      <input type="text" class="search-input" id="search-input" placeholder="Search name, code, access…" oninput="applyFilters()">
+    </div>
+
+    <select class="filter-select" id="filter-choice" onchange="applyFilters()">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="validate">Validated</option>
+      <option value="deactivate">Deactivated</option>
+    </select>
+
+    <div class="toolbar-right">
+      <button class="btn btn-ghost" onclick="collapseAll()"><i class="bi bi-arrows-collapse"></i> Collapse All</button>
+      <button class="btn btn-primary btn-save" id="save-btn" onclick="batchSave()" disabled>
+        <div class="save-dot"></div>
+        <i class="bi bi-floppy"></i> Save Changes
+      </button>
+      <button class="btn btn-ghost" onclick="window.location='/my/export'"><i class="bi bi-download"></i> Export</button>
+    </div>
+  </div>
+
+  <div class="table-outer">
+    <div class="table-card">
+      <div id="table-loading" style="text-align:center;padding:2.5rem;">
+        <div class="spinner" style="width:28px;height:28px;border-width:3px;margin:0 auto .75rem;"></div>
+        <p style="color:var(--muted);font-size:.85rem;">Loading users…</p>
       </div>
 
-      <!-- Bulk Actions -->
-      <div class="bulk-bar" id="bulk-bar" style="display:none;">
-        <span class="bulk-label"><i class="bi bi-check-square me-1"></i><span id="sel-count">0</span> selected</span>
-        <button class="bbtn bbtn-validate" onclick="bulkUpdate('validate')"><i class="bi bi-check-circle"></i>Validate</button>
-        <button class="bbtn bbtn-deactivate" onclick="bulkUpdate('deactivate')"><i class="bi bi-x-circle"></i>Deactivate</button>
-        <button class="bbtn bbtn-reset" onclick="bulkUpdate('pending')"><i class="bi bi-arrow-counterclockwise"></i>Reset</button>
-        <button class="bbtn bbtn-teal" onclick="selectAll()"><i class="bi bi-check-all"></i>Select All</button>
-        <button class="bbtn bbtn-grey" onclick="deselectAll()"><i class="bi bi-square"></i>Deselect</button>
-      </div>
-
-      <div id="loading" style="text-align:center;padding:3rem;display:block;">
-        <div class="spinner" style="width:36px;height:36px;border-width:4px;margin:0 auto 0.75rem;"></div>
-        <p style="color:var(--muted);">Loading your users…</p>
-      </div>
-      <div class="table-wrap" id="table-wrap" style="display:none;">
-        <table class="data-table">
-          <thead id="t-head"></thead>
-          <tbody id="t-body"></tbody>
+      <div id="table-wrap" style="display:none;overflow-x:auto;">
+        <table class="fiori-table" id="main-table">
+          <thead>
+            <tr>
+              <th class="col-expand"></th>
+              <th class="col-check"><input type="checkbox" id="check-all" onchange="toggleAll(this)"></th>
+              <th>Code</th>
+              <th>User Name</th>
+              <th>Data Entry Access</th>
+              <th>Manager</th>
+              <th>Location</th>
+              <th>Lines</th>
+              <th class="col-action">Action</th>
+            </tr>
+          </thead>
+          <tbody id="main-tbody"></tbody>
         </table>
       </div>
-      <div class="empty-state" id="empty-state" style="display:none;">
-        <i class="bi bi-inbox"></i><h4>No results found</h4><p>Try adjusting your filters.</p>
+
+      <div id="table-empty" class="empty-state" style="display:none">
+        <i class="bi bi-inbox"></i>
+        <p>No users found for your account or the current review session.</p>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Sign Off Modal -->
-<div class="modal-overlay" id="signoff-modal">
-  <div class="modal-box">
-    <div class="modal-title"><i class="bi bi-pen"></i>Sign Off — Summary</div>
-    <p style="font-size:0.88rem;color:var(--muted);margin-bottom:1rem;">
-      Before signing off, review the summary of your changes below.
-    </p>
-    <div id="signoff-summary"></div>
-    <div class="modal-actions">
-      <button class="act-btn" style="background:#f1f5f9;color:#374151;" onclick="closeModal('signoff-modal')">Cancel</button>
-      <button class="act-btn act-btn-purple" onclick="confirmSignoff()"><i class="bi bi-pen me-1"></i>Confirm Sign Off</button>
-    </div>
-  </div>
-</div>
-
-<!-- Delegate Modal -->
 <div class="modal-overlay" id="delegate-modal">
   <div class="modal-box">
-    <div class="modal-title"><i class="bi bi-person-plus"></i>Delegate Review</div>
-    <p style="font-size:0.88rem;color:var(--muted);margin-bottom:1rem;">Enter the owner_key of the person you want to delegate to.</p>
-    <label class="filter-label">Delegate Owner Key</label>
-    <input class="modal-input" type="text" id="delegate-input" placeholder="e.g. F000002 or delegate@scor.com">
+    <div class="modal-title"><i class="bi bi-person-plus"></i> Set Delegation</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;">
+      Enter the owner key of the person who should also be able to review your users during this session.
+    </p>
+    <div class="form-group">
+      <label class="form-label">Delegate Owner Key</label>
+      <input class="modal-input" type="text" id="delegate-input" placeholder="e.g. OWNER_XYZ">
+    </div>
     <div class="modal-actions">
-      <button class="act-btn" style="background:#f1f5f9;color:#374151;" onclick="closeModal('delegate-modal')">Cancel</button>
-      <button class="act-btn act-btn-teal" onclick="confirmDelegate()"><i class="bi bi-check me-1"></i>Confirm</button>
+      <button class="btn btn-ghost" onclick="closeModal('delegate-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDelegate()">Save</button>
     </div>
   </div>
 </div>
 
-<!-- Detail Modal -->
-<div class="modal-overlay" id="detail-modal">
-  <div class="modal-box" style="max-width:700px;">
-    <div class="modal-title"><i class="bi bi-person-lines-fill"></i>User Details — <span id="detail-username"></span></div>
-    <div id="detail-content"></div>
-    <div class="modal-actions">
-      <button class="act-btn" style="background:#f1f5f9;color:#374151;" onclick="closeModal('detail-modal')">Close</button>
-    </div>
-  </div>
-</div>
+<div class="toast-wrap" id="toast-wrap"></div>
 
 <script>
-  let allUsers = [], filteredUsers = [], selectedCodes = new Set();
-  const COLS = ['code','user_name','functional_profile','data_entry_access','manager','departement','location','active_bfc'];
+  let allUsers = [];
+  let expandedCodes = new Set();
+  let detailCache = {};
+  let pendingChanges = {};
+  let selectedCodes = new Set();
 
-  document.addEventListener('click', e => { if (!e.target.closest('.exp-drop')) document.getElementById('exp-menu').classList.remove('show'); });
-  function toggleExpMenu(e) { e.stopPropagation(); document.getElementById('exp-menu').classList.toggle('show'); }
+  const FUNCTIONAL_PROFILE_OPTIONS = [
+    'IT-ACCNT',
+    'DATA-ENTRY',
+    'DATA-VIEW',
+    'SAPCC-VIEW',
+    'AUDITOR',
+    'CONSO-ADM-P',
+    'DATA-VIEW-DM',
+    'SAPCC-ADMIN',
+    'DATA-ENTRY-D'
+  ];
 
-  async function init() {
-    const [statsRes, usersRes] = await Promise.all([fetch('/my/stats'), fetch('/my/users')]);
-    const stats = await statsRes.json();
-    const usersData = await usersRes.json();
+  const ACCESS_RIGHT_OPTIONS = ['R', 'R/W'];
 
-    if (stats.success) {
-      document.getElementById('s-pending').textContent    = stats.pending;
-      document.getElementById('s-validated').textContent  = stats.validated;
-      document.getElementById('s-deactivated').textContent= stats.deactivated;
-      //document.getElementById('s-pct').textContent        = stats.pct + '%';
-      //document.getElementById('p-bar').style.width        = stats.pct + '%';
-      //document.getElementById('p-text').textContent       = stats.pct + '%';
-      if (stats.deadline) {
-        document.getElementById('deadline-text').textContent = new Date(stats.deadline).toLocaleDateString('en-GB');
-        document.getElementById('deadline-chip').style.display = 'inline-block';
-      }
+  document.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    loadUsers();
+  });
+
+  async function loadStats() {
+    const r = await fetch('/my/stats');
+    if (!r.ok) return;
+    const d = await r.json();
+
+    document.getElementById('s-total').textContent = d.total ?? 0;
+    document.getElementById('s-valid').textContent = d.validated ?? 0;
+    document.getElementById('s-deact').textContent = d.deactivated ?? 0;
+    document.getElementById('s-pend').textContent = d.pending ?? 0;
+    document.getElementById('s-pct-txt').textContent = (d.pct ?? 0) + '%';
+    document.getElementById('s-pct-bar').style.width = (d.pct ?? 0) + '%';
+
+    if (d.quarter) {
+      document.getElementById('s-quarter').textContent = d.quarter + ' — Validation Progress';
     }
-    if (usersData.success) {
-      allUsers = usersData.users;
-      filteredUsers = [...allUsers];
-      if (usersData.quarter) document.getElementById('quarter-label').textContent = usersData.quarter;
-      populateFilters();
-      renderTable();
+
+    if (d.deadline) {
+      const el = document.getElementById('s-deadline');
+      el.textContent = '⏱ Deadline: ' + d.deadline;
+      el.style.display = '';
     }
-    document.getElementById('loading').style.display = 'none';
+
+    document.getElementById('signoff-bar').style.display = (d.pct === 100) ? 'flex' : 'none';
   }
 
-  function populateFilters() {
-    const unique = k => [...new Set(allUsers.map(u => u[k]).filter(Boolean))].sort();
-    const fill = (id, vals) => {
-      const el = document.getElementById(id);
-      const first = el.options[0].outerHTML;
-      el.innerHTML = first + vals.map(v => `<option value="${v}">${v}</option>`).join('');
-    };
-    fill('f-profile', unique('functional_profile'));
-    fill('f-access', unique('data_entry_access'));
-    fill('f-location', unique('location'));
+  async function loadUsers() {
+    const r = await fetch('/my/users');
+    const d = await r.json();
+
+    document.getElementById('table-loading').style.display = 'none';
+
+    if (!d.success || !d.users || d.users.length === 0) {
+      document.getElementById('table-empty').style.display = 'block';
+      return;
+    }
+
+    allUsers = d.users;
+    document.getElementById('table-wrap').style.display = '';
+    renderTable(allUsers);
+  }
+
+  function renderTable(users) {
+    const tbody = document.getElementById('main-tbody');
+    tbody.innerHTML = '';
+
+    if (users.length === 0) {
+      document.getElementById('table-wrap').style.display = 'none';
+      document.getElementById('table-empty').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('table-wrap').style.display = '';
+    document.getElementById('table-empty').style.display = 'none';
+
+    users.forEach(u => {
+      const isExpanded = expandedCodes.has(u.code);
+      const isSelected = selectedCodes.has(u.code);
+
+      const mainTr = document.createElement('tr');
+      mainTr.className = 'main-row' + (isExpanded ? ' expanded' : '') + (u.choice === 'deactivate' ? ' deactivated' : '');
+      mainTr.dataset.code = u.code;
+      mainTr.innerHTML = `
+        <td>
+          <button class="expand-btn ${isExpanded ? 'open' : ''}" onclick="toggleExpand('${esc(u.code)}', this, event)" title="Expand detail rows">
+            <i class="bi bi-chevron-right" style="font-size:.8rem;"></i>
+          </button>
+        </td>
+        <td><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelect('${esc(u.code)}', this)"></td>
+        <td style="font-family:monospace;font-weight:600;color:var(--teal);">${esc(u.code || '')}</td>
+        <td style="font-weight:500;">${esc(u.user_name || '—')}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(u.data_entry_access || '')}">
+          ${esc(u.data_entry_access || '—')}
+        </td>
+        <td>${esc(u.manager || '—')}</td>
+        <td>${esc(u.location || '—')}</td>
+        <td><span class="line-badge">${u.line_count || 0}</span></td>
+        <td>
+          <div class="action-cell">
+            <button class="act-sm act-validate" onclick="setChoice('${esc(u.code)}','validate',event)">
+              <i class="bi bi-check-lg"></i> Validate
+            </button>
+            <button class="act-sm act-deactivate" onclick="setChoice('${esc(u.code)}','deactivate',event)">
+              <i class="bi bi-x-lg"></i> Deactivate
+            </button>
+            <button class="act-sm act-reset" onclick="setChoice('${esc(u.code)}','pending',event)">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(mainTr);
+
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'detail-row' + (isExpanded ? ' open' : '');
+      detailTr.id = 'detail-' + sanitizeId(u.code);
+      detailTr.innerHTML = `
+        <td colspan="9">
+          <div class="detail-box">
+            <div class="detail-header">
+              <span>Data Entry Access</span>
+              <span>Functional Profile</span>
+              <span>Location</span>
+              <span>BFC Reporting Unit</span>
+              <span>Entity Name</span>
+              <span>Access Right</span>
+            </div>
+            <div id="detail-body-${sanitizeId(u.code)}">
+              ${
+                isExpanded && detailCache[u.code]
+                  ? buildDetailLines(detailCache[u.code])
+                  : `<div style="padding:.6rem .5rem;color:var(--muted);">
+                      <span class="spinner" style="vertical-align:middle;margin-right:.5rem;"></span>
+                      Loading detail rows…
+                    </div>`
+              }
+            </div>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(detailTr);
+
+      if (isExpanded && !detailCache[u.code]) {
+        fetchDetails(u.code);
+      }
+    });
+  }
+
+  async function fetchDetails(code) {
+    const r = await fetch('/my/user/' + encodeURIComponent(code) + '/details');
+    if (!r.ok) {
+      showToast('Failed to load details for ' + code, 'error');
+      return;
+    }
+    const d = await r.json();
+    detailCache[code] = d.details || [];
+    renderDetailRows(code, detailCache[code]);
+  }
+
+  function buildDetailLines(details) {
+    return details.map(row => `
+      <div class="detail-line" data-row-id="${row.id}">
+        ${editableCell(row.id, 'data_entry_access', row.data_entry_access, 'text')}
+        ${editableCell(row.id, 'functional_profile', row.functional_profile, 'select', FUNCTIONAL_PROFILE_OPTIONS)}
+        ${editableCell(row.id, 'location', row.location, 'text')}
+        ${editableCell(row.id, 'bfc_reporting_unit', row.bfc_reporting_unit, 'text')}
+        ${editableCell(row.id, 'entity_name', row.entity_name, 'text')}
+        ${editableCell(row.id, 'access_right', row.access_right, 'select', ACCESS_RIGHT_OPTIONS)}
+      </div>
+    `).join('');
+  }
+
+  function renderDetailRows(code, details) {
+    const body = document.getElementById('detail-body-' + sanitizeId(code));
+    if (!body) return;
+    body.innerHTML = buildDetailLines(details);
+    body.querySelectorAll('.editable-cell').forEach(cell => {
+      cell.addEventListener('click', onCellClick);
+    });
+  }
+
+  function editableCell(rowId, field, value, type='text', options=[]) {
+    const hasPending = pendingChanges[rowId] && pendingChanges[rowId][field] !== undefined;
+    const displayVal = hasPending ? pendingChanges[rowId][field] : (value || '');
+    const isEmpty = !displayVal;
+    const dirtyClass = hasPending ? ' dirty' : '';
+
+    return `<div class="editable-cell${dirtyClass}"
+                 data-row-id="${rowId}"
+                 data-field="${esc(field)}"
+                 data-type="${esc(type)}"
+                 data-options='${esc(JSON.stringify(options))}'
+                 data-original="${esc(value || '')}">
+      <span class="cell-display ${isEmpty ? 'cell-empty' : ''}">
+        ${isEmpty ? 'Click to edit' : esc(displayVal)}
+      </span>
+    </div>`;
+  }
+
+  function onCellClick(e) {
+    const cell = e.currentTarget;
+    if (cell.classList.contains('editing')) return;
+
+    document.querySelectorAll('.editable-cell.editing').forEach(c => {
+      if (c !== cell) commitEdit(c);
+    });
+
+    const rowId = cell.dataset.rowId;
+    const field = cell.dataset.field;
+    const type = cell.dataset.type || 'text';
+    const options = JSON.parse(unescapeHtml(cell.dataset.options || '[]'));
+    const hasPending = pendingChanges[rowId] && pendingChanges[rowId][field] !== undefined;
+    const current = hasPending ? pendingChanges[rowId][field] : (cell.dataset.original || '');
+
+    cell.classList.add('editing');
+
+    if (type === 'select') {
+      cell.innerHTML = `
+        <select>
+          <option value=""></option>
+          ${options.map(opt => `<option value="${esc(opt)}" ${opt === current ? 'selected' : ''}>${esc(opt)}</option>`).join('')}
+        </select>
+      `;
+      const sel = cell.querySelector('select');
+      sel.focus();
+      sel.addEventListener('change', () => commitEdit(cell));
+      sel.addEventListener('blur', () => commitEdit(cell));
+      sel.addEventListener('keydown', ev => {
+        if (ev.key === 'Escape') {
+          cell.dataset.cancelEdit = '1';
+          sel.blur();
+        }
+      });
+    } else {
+      cell.innerHTML = `<input type="text" value="${esc(current)}" placeholder="Enter value…" autocomplete="off">`;
+      const inp = cell.querySelector('input');
+      inp.focus();
+      inp.select();
+      inp.addEventListener('blur', () => commitEdit(cell));
+      inp.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') inp.blur();
+        if (ev.key === 'Escape') {
+          cell.dataset.cancelEdit = '1';
+          inp.blur();
+        }
+        if (ev.key === 'Tab') {
+          ev.preventDefault();
+          inp.blur();
+          focusNextCell(cell);
+        }
+      });
+    }
+  }
+
+  function commitEdit(cell) {
+    if (!cell.classList.contains('editing')) return;
+
+    const rowId = cell.dataset.rowId;
+    const field = cell.dataset.field;
+    const type = cell.dataset.type || 'text';
+    const original = cell.dataset.original || '';
+    const input = type === 'select' ? cell.querySelector('select') : cell.querySelector('input');
+    const newVal = input ? input.value : original;
+    const cancel = cell.dataset.cancelEdit === '1';
+    delete cell.dataset.cancelEdit;
+
+    cell.classList.remove('editing');
+
+    if (cancel) {
+      const hasPending = pendingChanges[rowId] && pendingChanges[rowId][field] !== undefined;
+      const displayVal = hasPending ? pendingChanges[rowId][field] : original;
+      refreshCellDisplay(cell, displayVal, hasPending);
+      return;
+    }
+
+    if (!pendingChanges[rowId]) pendingChanges[rowId] = {};
+
+    if (newVal === original) {
+      delete pendingChanges[rowId][field];
+      if (Object.keys(pendingChanges[rowId]).length === 0) delete pendingChanges[rowId];
+      refreshCellDisplay(cell, original, false);
+    } else {
+      pendingChanges[rowId][field] = newVal;
+      refreshCellDisplay(cell, newVal, true);
+    }
+
+    updateSaveButton();
+  }
+
+  function refreshCellDisplay(cell, value, isDirty) {
+    cell.classList.toggle('dirty', isDirty);
+    const isEmpty = !value;
+    cell.innerHTML = `
+      <span class="cell-display ${isEmpty ? 'cell-empty' : ''}">
+        ${isEmpty ? 'Click to edit' : esc(value)}
+      </span>
+    `;
+    cell.addEventListener('click', onCellClick);
+  }
+
+  function focusNextCell(currentCell) {
+    const cells = Array.from(document.querySelectorAll('.editable-cell'));
+    const idx = cells.indexOf(currentCell);
+    if (idx >= 0 && idx < cells.length - 1) cells[idx + 1].click();
+  }
+
+  function updateSaveButton() {
+    const hasChanges = Object.keys(pendingChanges).length > 0;
+    const btn = document.getElementById('save-btn');
+    btn.disabled = !hasChanges;
+    btn.classList.toggle('has-changes', hasChanges);
+  }
+
+  async function batchSave() {
+    const totalRows = Object.keys(pendingChanges).length;
+    if (totalRows === 0) return;
+
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="save-dot"></div><div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Saving…';
+
+    const promises = [];
+    for (const [rowId, fields] of Object.entries(pendingChanges)) {
+      for (const [field, value] of Object.entries(fields)) {
+        promises.push(
+          fetch('/my/update_field', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ row_id: parseInt(rowId, 10), field, value })
+          }).then(r => r.json())
+        );
+      }
+    }
+
+    try {
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => !r.success);
+
+      if (errors.length === 0) {
+        for (const [code, rows] of Object.entries(detailCache)) {
+          rows.forEach(row => {
+            if (pendingChanges[row.id]) {
+              Object.assign(row, pendingChanges[row.id]);
+            }
+          });
+        }
+
+        pendingChanges = {};
+
+        document.querySelectorAll('.editable-cell.dirty').forEach(cell => {
+          cell.classList.remove('dirty');
+          const rowId = cell.dataset.rowId;
+          const field = cell.dataset.field;
+          const cached = findCachedValue(rowId, field);
+          cell.dataset.original = cached == null ? '' : String(cached);
+        });
+
+        updateSaveButton();
+        applyFilters();
+        showToast(`${promises.length} field(s) saved successfully`, 'ok');
+      } else {
+        showToast(`${errors.length} save(s) failed`, 'error');
+      }
+    } catch (e) {
+      showToast('Network error during save', 'error');
+    }
+
+    btn.innerHTML = '<div class="save-dot"></div><i class="bi bi-floppy"></i> Save Changes';
+    updateSaveButton();
+  }
+
+  function findCachedValue(rowId, field) {
+    for (const rows of Object.values(detailCache)) {
+      for (const row of rows) {
+        if (String(row.id) === String(rowId)) return row[field];
+      }
+    }
+    return '';
+  }
+
+  async function setChoice(code, choice, event) {
+    event.stopPropagation();
+
+    const r = await fetch('/my/update_choice', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ code, choice })
+    });
+
+    const d = await r.json();
+    if (d.success) {
+      const u = allUsers.find(x => x.code === code);
+      if (u) u.choice = choice;
+      applyFilters();
+      loadStats();
+      showToast(
+        choice === 'validate'
+          ? 'Validated'
+          : choice === 'deactivate'
+          ? 'Deactivated'
+          : 'Reset to pending',
+        'ok'
+      );
+    } else {
+      showToast('Failed to update status', 'error');
+    }
+  }
+
+  function toggleAll(checkbox) {
+    if (checkbox.checked) {
+      allUsers.forEach(u => selectedCodes.add(u.code));
+    } else {
+      selectedCodes.clear();
+    }
+    applyFilters();
+  }
+
+  function toggleSelect(code, checkbox) {
+    if (checkbox.checked) selectedCodes.add(code);
+    else selectedCodes.delete(code);
   }
 
   function applyFilters() {
-    const fp = document.getElementById('f-profile').value;
-    const fa = document.getElementById('f-access').value;
-    const fl = document.getElementById('f-location').value;
-    const fc = document.getElementById('f-choice').value;
-    filteredUsers = allUsers.filter(u =>
-      (!fp || u.functional_profile === fp) &&
-      (!fa || u.data_entry_access === fa) &&
-      (!fl || u.location === fl) &&
-      (!fc || u.choice === fc)
-    );
-    renderTable();
+    const q = document.getElementById('search-input').value.toLowerCase();
+    const status = document.getElementById('filter-choice').value;
+
+    const filtered = allUsers.filter(u => {
+      const matchQ =
+        !q ||
+        (u.code || '').toLowerCase().includes(q) ||
+        (u.user_name || '').toLowerCase().includes(q) ||
+        (u.data_entry_access || '').toLowerCase().includes(q) ||
+        (u.location || '').toLowerCase().includes(q);
+
+      const matchS = !status || u.choice === status;
+      return matchQ && matchS;
+    });
+
+    renderTable(filtered);
   }
 
-  function clearFilters() {
-    ['f-profile','f-access','f-location','f-choice'].forEach(id => document.getElementById(id).value = '');
-    filteredUsers = [...allUsers];
-    renderTable();
-  }
+  function toggleExpand(code, btn, event) {
+    event.stopPropagation();
 
-  function renderTable() {
-    const wrap  = document.getElementById('table-wrap');
-    const empty = document.getElementById('empty-state');
-    const bulk  = document.getElementById('bulk-bar');
-    document.getElementById('results-count').textContent = `(${filteredUsers.length} user${filteredUsers.length !== 1 ? 's' : ''})`;
+    const detailRow = document.getElementById('detail-' + sanitizeId(code));
+    const mainRow = btn.closest('tr');
+    const isOpen = detailRow.classList.contains('open');
 
-    if (filteredUsers.length === 0) { wrap.style.display='none'; empty.style.display='block'; bulk.style.display='none'; return; }
-    wrap.style.display='block'; empty.style.display='none'; bulk.style.display='flex';
+    if (isOpen) {
+      detailRow.classList.remove('open');
+      btn.classList.remove('open');
+      mainRow.classList.remove('expanded');
+      expandedCodes.delete(code);
+    } else {
+      detailRow.classList.add('open');
+      btn.classList.add('open');
+      mainRow.classList.add('expanded');
+      expandedCodes.add(code);
 
-    const headers = ['','Code','User Name','Functional Profile','Data Entry Access','Manager','Dept','Location','Active BFC','Lines','Choice',''];
-    document.getElementById('t-head').innerHTML = `<tr>
-      <th class="cb-cell"><input type="checkbox" id="hdr-cb" onchange="toggleAll()"></th>
-      ${headers.slice(1,-1).map(h=>`<th>${h}</th>`).join('')}<th>Actions</th></tr>`;
-
-    document.getElementById('t-body').innerHTML = filteredUsers.map(u => {
-      const cls = u.choice === 'validate' ? 'validated' : u.choice === 'deactivate' ? 'deactivated' : '';
-      return `
-        <tr id="row-${u.code}">
-          <td class="cb-cell"><input type="checkbox" class="row-cb" data-code="${u.code}" ${selectedCodes.has(u.code)?'checked':''} onchange="toggleRow('${u.code}')"></td>
-          <td><code style="font-size:0.82rem;">${u.code||'-'}</code></td>
-          <td style="font-weight:600;">${u.user_name||'-'}</td>
-          <td>${u.functional_profile||'-'}</td>
-          <td>${u.data_entry_access||'-'}</td>
-          <td>${u.manager||'-'}</td>
-          <td>${u.departement||'-'}</td>
-          <td>${u.location||'-'}</td>
-          <td>${u.active_bfc||'-'}</td>
-          <td><span class="line-count-badge">${u.line_count}</span></td>
-          <td>
-            <select class="choice-sel ${cls}" data-code="${u.code}" onchange="updateChoice('${u.code}', this.value, this)">
-              <option value="pending" ${u.choice==='pending'?'selected':''}>⏳ Pending</option>
-              <option value="validate" ${u.choice==='validate'?'selected':''}>✅ Validate</option>
-              <option value="deactivate" ${u.choice==='deactivate'?'selected':''}>❌ Deactivate</option>
-            </select>
-          </td>
-          <td>
-            <button class="btn-expand" onclick="toggleDetail('${u.code}', this)" title="View details">
-              <i class="bi bi-chevron-down"></i>
-            </button>
-          </td>
-        </tr>
-        <tr class="detail-row" id="detail-${u.code}">
-          <td colspan="12"><div class="detail-box" id="detail-box-${u.code}"><div class="spinner" style="margin:1rem auto;width:24px;height:24px;border-width:3px;"></div></div></td>
-        </tr>`;
-    }).join('');
-    updateSelCount();
-  }
-
-  async function toggleDetail(code, btn) {
-    const row = document.getElementById(`detail-${code}`);
-    const box = document.getElementById(`detail-box-${code}`);
-    const isOpen = row.classList.contains('open');
-    row.classList.toggle('open', !isOpen);
-    btn.querySelector('i').className = isOpen ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
-    if (!isOpen) {
-      const res  = await fetch(`/my/user/${encodeURIComponent(code)}/details`);
-      const data = await res.json();
-      if (data.success) {
-        box.innerHTML = `
-          <div style="font-weight:700;color:var(--teal);margin-bottom:0.75rem;font-size:0.88rem;">
-            <i class="bi bi-layers me-1"></i>${data.details.length} access line${data.details.length>1?'s':''} for ${data.user_name}
-          </div>
-          ${data.details.map((d,i) => `
-            <div style="background:white;border:1px solid var(--border);border-radius:7px;padding:0.9rem;margin-bottom:0.5rem;">
-              <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">LINE ${i+1}</div>
-              <div class="detail-grid">
-                <div class="detail-item"><label>Data Entry Access</label><span>${d.data_entry_access||'-'}</span></div>
-                <div class="detail-item"><label>Functional Profile</label><span>${d.functional_profile||'-'}</span></div>
-                <div class="detail-item"><label>Active BFC</label><span>${d.active_bfc||'-'}</span></div>
-                <div class="detail-item"><label>Active AD</label><span>${d.active_ad||'-'}</span></div>
-                <div class="detail-item"><label>Location</label><span>${d.location||'-'}</span></div>
-                ${Object.entries(d.extra||{}).slice(0,4).map(([k,v])=>`<div class="detail-item"><label>${k}</label><span>${v||'-'}</span></div>`).join('')}
-              </div>
-            </div>`).join('')}`;
+      if (!detailCache[code]) {
+        fetchDetails(code);
+      } else {
+        renderDetailRows(code, detailCache[code]);
       }
     }
   }
 
-  async function updateChoice(code, choice, sel) {
-    sel.className = 'choice-sel ' + (choice==='validate'?'validated':choice==='deactivate'?'deactivated':'');
-    const res = await fetch('/my/update_choice', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({code, choice})
+  function collapseAll() {
+    document.querySelectorAll('.detail-row.open').forEach(r => r.classList.remove('open'));
+    document.querySelectorAll('.expand-btn.open').forEach(b => b.classList.remove('open'));
+    document.querySelectorAll('.main-row.expanded').forEach(r => r.classList.remove('expanded'));
+    expandedCodes.clear();
+  }
+
+  async function doSignoff() {
+    const r = await fetch('/my/signoff', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: '{}'
     });
-    const u = allUsers.find(u => u.code === code);
-    if (u) u.choice = choice;
-    await refreshStats();
-  }
+    const d = await r.json();
 
-  async function bulkUpdate(choice) {
-    if (selectedCodes.size === 0) { alert('Select at least one user'); return; }
-    for (const code of selectedCodes) {
-      await fetch('/my/update_choice', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({code, choice})
-      });
-      const u = allUsers.find(u => u.code === code);
-      if (u) u.choice = choice;
-    }
-    deselectAll();
-    applyFilters();
-    await refreshStats();
-  }
-
-  async function refreshStats() {
-    const res  = await fetch('/my/stats');
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('s-pending').textContent    = data.pending;
-      document.getElementById('s-validated').textContent  = data.validated;
-      document.getElementById('s-deactivated').textContent= data.deactivated;
-      document.getElementById('s-pct').textContent        = data.pct + '%';
-      document.getElementById('p-bar').style.width        = data.pct + '%';
-      document.getElementById('p-text').textContent       = data.pct + '%';
+    if (d.success) {
+      showToast('Sign-off recorded. Thank you!', 'ok');
+      document.getElementById('signoff-bar').style.display = 'none';
+    } else {
+      showToast('Sign-off failed', 'error');
     }
   }
 
-  function toggleRow(code) {
-    selectedCodes.has(code) ? selectedCodes.delete(code) : selectedCodes.add(code);
-    updateSelCount(); updateHdrCb();
-  }
-  function toggleAll() {
-    const checked = document.getElementById('hdr-cb').checked;
-    filteredUsers.forEach(u => checked ? selectedCodes.add(u.code) : selectedCodes.delete(u.code));
-    document.querySelectorAll('.row-cb').forEach(cb => cb.checked = checked);
-    updateSelCount();
-  }
-  function selectAll() {
-    filteredUsers.forEach(u => selectedCodes.add(u.code));
-    document.querySelectorAll('.row-cb').forEach(cb => cb.checked = true);
-    if(document.getElementById('hdr-cb')) document.getElementById('hdr-cb').checked = true;
-    updateSelCount();
-  }
-  function deselectAll() {
-    selectedCodes.clear();
-    document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false);
-    if(document.getElementById('hdr-cb')) document.getElementById('hdr-cb').checked = false;
-    updateSelCount();
-  }
-  function updateSelCount() { document.getElementById('sel-count').textContent = selectedCodes.size; }
-  function updateHdrCb() {
-    const hdr = document.getElementById('hdr-cb');
-    if (hdr) hdr.checked = filteredUsers.length > 0 && filteredUsers.every(u => selectedCodes.has(u.code));
+  function openDelegateModal() {
+    document.getElementById('delegate-modal').classList.add('show');
   }
 
-  function openSignoffModal() {
-    const validated   = allUsers.filter(u => u.choice==='validate').length;
-    const deactivated = allUsers.filter(u => u.choice==='deactivate').length;
-    const pending     = allUsers.filter(u => u.choice==='pending').length;
-    document.getElementById('signoff-summary').innerHTML = `
-      <div style="background:#f8fafc;border-radius:8px;padding:1rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;text-align:center;margin-bottom:1rem;">
-        <div><div style="font-size:1.6rem;font-weight:700;color:var(--success)">${validated}</div><div style="font-size:0.75rem;color:var(--muted)">VALIDATED</div></div>
-        <div><div style="font-size:1.6rem;font-weight:700;color:var(--danger)">${deactivated}</div><div style="font-size:0.75rem;color:var(--muted)">DEACTIVATED</div></div>
-        <div><div style="font-size:1.6rem;font-weight:700;color:var(--warning)">${pending}</div><div style="font-size:0.75rem;color:var(--muted)">PENDING</div></div>
-      </div>
-      ${pending>0?`<div style="background:#fef3c7;border-radius:6px;padding:0.75rem;font-size:0.85rem;color:#92400e;"><i class="bi bi-exclamation-triangle me-1"></i><b>Warning:</b> ${pending} user(s) still pending.</div>`:''}`;
-    document.getElementById('signoff-modal').classList.add('show');
-  }
-  async function confirmSignoff() {
-    await fetch('/my/signoff', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})});
-    closeModal('signoff-modal');
-    alert('Sign off confirmed!');
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
   }
 
-  function openDelegateModal() { document.getElementById('delegate-modal').classList.add('show'); }
-  async function confirmDelegate() {
+  async function saveDelegate() {
     const key = document.getElementById('delegate-input').value.trim();
-    if (!key) { alert('Please enter a delegate key'); return; }
-    await fetch('/my/delegate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({delegate_key:key})});
-    closeModal('delegate-modal');
-    alert('Delegation saved!');
+
+    const r = await fetch('/my/delegate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ delegate_key: key })
+    });
+
+    const d = await r.json();
+    if (d.success) {
+      showToast('Delegation saved', 'ok');
+      closeModal('delegate-modal');
+    } else {
+      showToast('Failed to save delegation', 'error');
+    }
   }
 
-  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-  document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('show'); }));
-
-  function exportData(type) {
-    document.getElementById('exp-menu').classList.remove('show');
-    let codes = [];
-    if (type==='all') codes = allUsers.map(u=>u.code);
-    else if (type==='filtered') codes = filteredUsers.map(u=>u.code);
-    else if (type==='validate') codes = filteredUsers.filter(u=>u.choice==='validate').map(u=>u.code);
-    else if (type==='deactivate') codes = filteredUsers.filter(u=>u.choice==='deactivate').map(u=>u.code);
-    if (codes.length===0) { alert('No data to export'); return; }
-    window.location.href = '/my/export';
+  function showToast(msg, type='ok') {
+    const wrap = document.getElementById('toast-wrap');
+    const t = document.createElement('div');
+    t.className = 'toast' + (type === 'error' ? ' error' : type === 'warn' ? ' warn' : '');
+    t.innerHTML = `<i class="bi bi-${type==='error' ? 'exclamation-circle' : type==='warn' ? 'exclamation-triangle' : 'check-circle'}"></i> ${esc(msg)}`;
+    wrap.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
   }
 
-  init();
+  function esc(str) {
+    return String(str ?? '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+
+  function unescapeHtml(str) {
+    const txt = document.createElement('textarea');
+    txt.innerHTML = str;
+    return txt.value;
+  }
+
+  function sanitizeId(str) {
+    return String(str || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+  }
 </script>
 </body>
 </html>
